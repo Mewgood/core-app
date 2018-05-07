@@ -186,7 +186,7 @@ class ArchiveBig extends Controller
         $events = \App\ArchiveBig::where('siteId', $id)
             ->where('isPublishInSite', '1')
             ->where('isVisible', '1')
-            ->orderBy('systemDate', 'asc')->get()->toArray();
+            ->orderBy('systemDate', 'desc')->get()->toArray();
 
         $vipFlags = [];
 

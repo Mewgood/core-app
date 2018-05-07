@@ -45,7 +45,8 @@ class ArchiveBig extends Controller
         return \App\ArchiveBig::where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
             ->where('systemDate', '>=', $date . '-01')
-            ->where('systemDate', '<=', $date . '-31')->get()->toArray();
+            ->where('systemDate', '<=', $date . '-31')
+			->orderBy('systemDate', 'desc')->get()->toArray();
     }
 
     // @param $siteId,

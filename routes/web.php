@@ -167,6 +167,83 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     });
 
     /*
+     * League
+     ---------------------------------------------------------------------*/
+
+    // @param $countryCode
+    // @return array()
+    $app->get('/league-country/{countryCode}', function ($countryCode) use ($app) {
+        $leagues = \App\Models\League\Country::select('leagueId')
+            ->where('countryCode', $countryCode)
+            ->get();
+
+        foreach ($leagues as $league) {
+            $t = \App\League::find($league->leagueId);
+            $league->name = $t->name;
+        }
+
+        return $leagues;
+    });
+
+    // @param $leagueId
+    // @return string
+    $app->get('/league/alias/get/{leagueId}', function ($leagueId) use ($app) {
+        $alias = \App\Models\League\Alias::where('leagueId', $leagueId)->first();
+        return [
+            'leagueId' => $leagueId,
+            'alias'  => $alias ? $alias->alias : '',
+        ];
+    });
+
+    // @param integer $leagueId
+    // @paramstring $alias
+    // @return array();
+    $app->post('/league/alias/{leagueId}', function (Request $r, $leagueId) use ($app) {
+
+        $leagueAlias = $r->input('alias');
+		$leagueData = ['league' => $leagueAlias];
+
+        // update match
+        \App\Match::where('leagueId', $leagueId)->update($leagueData);
+        // update event
+        \App\Event::where('leagueId', $leagueId)->update($leagueData);
+        // update association
+        \App\Association::where('leagueId', $leagueId)->update($leagueData);
+        // update distribution
+        \App\Distribution::where('leagueId', $leagueId)->update($leagueData);
+        // update archiveHome
+        \App\ArchiveHome::where('leagueId', $leagueId)->update($leagueData);
+        // update archiveBig
+        \App\ArchiveBig::where('leagueId', $leagueId)->update($leagueData);
+        // update subscriptionTipHistory
+        \App\SubscriptionTipHistory::where('leagueId', $leagueId)->update($leagueData);
+
+        $oldAlias = \App\Models\League\Alias::where('leagueId', $leagueId)
+            ->first();
+
+        if ($oldAlias) {
+
+            $oldAlias->update(['alias' => $leagueAlias]);
+
+            return [
+                'type' => 'success',
+                'message'  => 'Alias for league was updated with success!',
+            ];
+        }
+
+        \App\Models\League\Alias::create([
+            'leagueId' => $leagueId,
+            'alias' => $leagueAlias,
+        ]);
+
+        return [
+            'type' => 'success',
+            'message'  => 'Alias for league was created with success!',
+        ];
+
+    });
+
+    /*
      * Auto Units
      ---------------------------------------------------------------------*/
 
@@ -1465,7 +1542,3 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     });
 
 });
-
-
-
-

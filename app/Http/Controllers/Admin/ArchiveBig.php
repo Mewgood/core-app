@@ -42,11 +42,30 @@ class ArchiveBig extends Controller
         $tableIdentifier = $r->input('tableIdentifier');
         $date = $r->input('date');
 
-        return \App\ArchiveBig::where('siteId', $siteId)
+        $data = \App\ArchiveBig::where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
             ->where('systemDate', '>=', $date . '-01')
             ->where('systemDate', '<=', $date . '-31')
 			->orderBy('systemDate', 'desc')->get()->toArray();
+
+		foreach ($data as $key => $value) {
+			switch ($value['statusId']) {
+				case 1:
+					$data[$key]['statusId'] = 'Win';
+				break;
+				case 2:
+					$data[$key]['statusId'] = 'Loss';
+				break;
+				case 3:
+					$data[$key]['statusId'] = 'Draw';
+				break;
+				case 4:
+					$data[$key]['statusId'] = 'PostP';
+				break;
+			}
+		}
+
+		return $data;
     }
 
     // @param $siteId,

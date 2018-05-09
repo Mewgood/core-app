@@ -222,7 +222,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->first();
 
         if ($oldAlias) {
-
             $oldAlias->update(['alias' => $leagueAlias]);
 
             return [

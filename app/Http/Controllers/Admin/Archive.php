@@ -25,8 +25,15 @@ class Archive extends Controller
                 "type" => "error",
                 "message" => "No events provided!",
             ];
-
-        foreach ($ids as $id) {
+			
+		// before publishing , we need to make sure the order is correct ( for a given site, we want the VIP distributions to have higher order than the NON-VIP ones )
+		$distributions = \App\Distribution::whereIn('id', $ids)->orderBy('siteId','asc')->orderBy('isVip','desc')->get();
+		$sorted_ids = [];		
+		foreach($distributions as $distribution) {
+			$sorted_ids[] = $distribution->id;
+		}
+		
+        foreach ($sorted_ids as $id) {
             $distribution = \App\Distribution::where('id', $id)->first();
 
             // TODO check if distributed event exists

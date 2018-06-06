@@ -63,8 +63,11 @@ class ReplaceTipsInTemplate extends Controller
                 '{{awayTeam}}',
                 '{{predictionName}}',
             ];
+			
+			// GDM : we're creating the date Obj in the Distribution Controller according to the site's date format
+			// date('Y-m-d', strtotime($event['eventDate'])),
             $replace = [
-                date('Y-m-d', strtotime($event['eventDate'])),
+                $event['eventDate'],
                 $event['country'],
                 $event['league'],
                 $event['homeTeam'],

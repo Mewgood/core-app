@@ -546,7 +546,7 @@ class Distribution extends Controller
                     'awayTeamId' => $event['awayTeamId'],
                     'predictionId' => $event['predictionId'],
                     'predictionName' => $event['predictionName'],
-                    'eventDate' => $event['eventDate'],
+                    'eventDate' => gmdate( $site->dateFormat , strtotime($event['eventDate']) ),
                     'systemDate' => $event['systemDate'],
                 ]);
             }

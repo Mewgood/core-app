@@ -1216,6 +1216,11 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->get('/match/filter/{table}/{filter}', 'Admin\Match@getMatchesByFilter');
 
+	// get all available matches by search - with date filter
+    // @param string $filter
+    // @return array()
+    $app->get('/match/filter/{table}/{filter}/{date}', 'Admin\Match@getMatchesByFilter');
+	
     // get match by id
     // @param integer $id
     // @return object

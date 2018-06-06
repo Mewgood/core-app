@@ -25,8 +25,10 @@ class Match extends Controller
     // @param string $filter
     // @param string $table
     // @return array()
-    public function getMatchesByFilter($table, $filter)
+    public function getMatchesByFilter($table, $filter, $date = null )
     {
+		
+		
         $filter = trim(urldecode($filter));
 
         $events = \App\Match::where('country', 'like', '%' . $filter . '%')
@@ -37,6 +39,12 @@ class Match extends Controller
 
         if ($table == 'run' || $table == 'ruv') {
             foreach ($events as $k => $v) {
+				// unset the events that don't match the given date
+				if( !is_null($date) ) {
+					if( Carbon::parse($v->eventDate)->startOfDay() != Carbon::parse($date)->startOfDay() ) {
+						unset($events[$k]);
+					}
+				}
 
                 // unset events starts less than 20 minutes
                 if ($v->eventDate < Carbon::now('GMT')->addMinutes(20))
@@ -51,7 +59,14 @@ class Match extends Controller
 
         // prepare events for nun || nuv
         foreach ($events as $k => $v) {
-
+			
+			// unset the events that don't match the given date
+			if( !is_null($date) ) {
+				if( Carbon::parse($v->eventDate)->startOfDay() != Carbon::parse($date)->startOfDay() ) {
+					unset($events[$k]);
+				}
+			}
+				
             // unset events finished less than 105 minutes
             if ($v->eventDate > Carbon::now('UTC')->modify('-105 minutes'))
                 unset($events[$k]);

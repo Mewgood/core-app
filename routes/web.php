@@ -71,6 +71,20 @@ $app->post('/admin/login', 'Admin\Login@index');
 
 $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
+	/* 
+	 * Routes for the Leagues controller 
+	 */
+	
+	// Get all Countries 
+	$app->get('/leagues/get-all-countries', 'Admin\Leagues@getAllCountries');
+	// Get all Leagues for a given country  
+	$app->get('/leagues/get-country-leagues/{countryCode}', 'Admin\Leagues@getCountryLeagues');
+	// Get all Teams for a given League  
+	$app->get('/leagues/get-league-teams/{league}', 'Admin\Leagues@getLeagueTeams');
+	// Get all Teams for a given League but exclude the given team
+	$app->get('/leagues/get-league-teams/{league}/{exclude}', 'Admin\Leagues@getLeagueTeams');
+	
+
     /*
      * Country
      ---------------------------------------------------------------------*/

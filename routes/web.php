@@ -83,6 +83,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 	$app->get('/leagues/get-league-teams/{league}', 'Admin\Leagues@getLeagueTeams');
 	// Get all Teams for a given League but exclude the given team
 	$app->get('/leagues/get-league-teams/{league}/{exclude}', 'Admin\Leagues@getLeagueTeams');
+	// Import Leagues / Teams from the feed
+	$app->get('/leagues/import-teams-from-feed', 'Admin\Leagues@importTeamsFeed');
 	
 
     /*

@@ -1223,6 +1223,22 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post('/event/create-from-match', 'Admin\Event@createFromMatch');
 
+	// add event manually
+    // @param integer $homeTeamId
+    // @param integer $awayTeamId
+    // @param integer $leagueId
+    // @param integer $countryCode
+    // @param integer $eventDate
+    // @param string  $predictionId
+    // @param string  $odd
+    // @param string  $country
+    // @param string  $league
+    // @param string  $homeTeam
+    // @param string  $awayTeam
+    // @return array()
+    $app->post('/event/create-manually', 'Admin\Event@createManual');
+	
+	
     /*
      * Matches
      ---------------------------------------------------------------------*/

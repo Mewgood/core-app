@@ -135,6 +135,125 @@ class Event extends Controller
         ];
     }
 
+	// add event manually
+    // @param integer $country
+    // @param integer $league
+    // @param integer $homeTeam
+    // @param integer $awayTeam
+    // @param integer $homeTeamId
+    // @param integer $awayTeamId
+    // @param integer $leagueId
+    // @param integer $countryCode
+    // @param integer $eventDate
+    // @param string  $predictionId
+    // @param string  $odd
+    // @return array()
+    public function createManual(Request $r)
+    {
+		// not sure if we should get the country , league and teams data from DB based on ID or directly from the form - currently we get it from the form as it's faster to implement 
+        $country = $r->input('country');
+        $league = $r->input('league');
+        $homeTeam = $r->input('homeTeam');
+        $awayTeam = $r->input('awayTeam');
+		
+        $homeTeamId = $r->input('homeTeamId');
+        $awayTeamId = $r->input('awayTeamId');
+        $leagueId = $r->input('leagueId');
+        $countryCode = $r->input('countryCode');		
+        $eventDate = $r->input('eventDate');		
+        $predictionId = $r->input('predictionId');		
+        $odd = $r->input('odd');
+
+		// Input validations
+        if (!$predictionId || trim($predictionId) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Prediction can not be empty!",
+            ];
+        }
+        if (!$odd || trim($odd) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Odd can not be empty!",
+            ];
+        }		
+		if (!$homeTeamId || trim($homeTeamId) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Home Team can not be empty!",
+            ];
+        }		
+		if (!$awayTeamId || trim($awayTeamId) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Away Team can not be empty!",
+            ];
+        }		
+		if (!$leagueId || trim($leagueId) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "League can not be empty!",
+            ];
+        }		
+		if (!$countryCode || trim($countryCode) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Country can not be empty!",
+            ];
+        }
+		
+		// check if the same team was selected for both away and home team inputs
+        if ( $homeTeamId == $awayTeamId ) {
+            return [
+                'type' => 'error',
+                'message' => "You can not select the same team as both away and home teams",
+            ];
+        }
+		
+        // check if event already exists with same prediciton
+        if (\App\Event::where('homeTeamId', $homeTeamId)
+            ->where('awayTeamId', $awayTeamId)
+            ->where('eventDate', $eventDate)
+            ->where('predictionId', $predictionId)
+            ->count())
+        {
+            return [
+                'type' => 'error',
+                'message' => "This events already exists with same prediction",
+            ];
+        }
+
+		// prepare the event data
+		$eventData = [];
+        $eventData['country'] = $country;
+        $eventData['league'] = $league;
+        $eventData['homeTeam'] = $homeTeam;
+        $eventData['awayTeam'] = $awayTeam;
+		
+        $eventData['result'] = '';
+        $eventData['status'] = '';
+		
+        $eventData['homeTeamId'] = $homeTeamId;
+        $eventData['awayTeamId'] = $awayTeamId;
+        $eventData['leagueId'] = $leagueId;
+        $eventData['countryCode'] = $countryCode;
+        $eventData['predictionId'] = $predictionId;
+        $eventData['eventDate'] = $eventDate;
+        $eventData['odd'] = number_format((float) $odd, 2, '.', '');
+        $eventData['source'] = 'manual';
+        $eventData['provider'] = 'manual';
+        $eventData['matchId'] = 0;
+		
+        $event = \App\Event::create($eventData);
+
+        return [
+            'type' => 'success',
+            'message' => "Event was creeated with success",
+            'data' => $event,
+        ];
+		
+    }
+	
     // @param integer $eventId
     // @param string  $result
     // @param integer $statusId

@@ -70,9 +70,12 @@ class Event extends Controller
         $match = \App\Match::find($matchId)->toArray();
 
         // check if event already exists with same prediciton
+		// we check only the date - not the time of the event
+		$checkDate = strtok($eventDate,  ' ');
         if (\App\Event::where('homeTeamId', $match['homeTeamId'])
             ->where('awayTeamId', $match['awayTeamId'])
-            ->where('eventDate', $match['eventDate'])
+            // ->where('eventDate', $match['eventDate'])
+            ->where('eventDate', 'like' , $checkDate . '%')
             ->where('predictionId', $predictionId)
             ->count())
         {
@@ -211,9 +214,12 @@ class Event extends Controller
         }
 		
         // check if event already exists with same prediciton
+		// we check only the date - not the time of the event
+		$checkDate = strtok($eventDate,  ' ');
         if (\App\Event::where('homeTeamId', $homeTeamId)
             ->where('awayTeamId', $awayTeamId)
-            ->where('eventDate', $eventDate)
+            // ->where('eventDate', $eventDate)
+            ->where('eventDate', 'like' , $checkDate . '%')
             ->where('predictionId', $predictionId)
             ->count())
         {

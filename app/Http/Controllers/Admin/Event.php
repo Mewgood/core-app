@@ -71,7 +71,7 @@ class Event extends Controller
 
         // check if event already exists with same prediciton
 		// we check only the date - not the time of the event
-		$checkDate = strtok($eventDate,  ' ');
+		$checkDate = strtok($match['eventDate'],  ' ');
         if (\App\Event::where('homeTeamId', $match['homeTeamId'])
             ->where('awayTeamId', $match['awayTeamId'])
             // ->where('eventDate', $match['eventDate'])

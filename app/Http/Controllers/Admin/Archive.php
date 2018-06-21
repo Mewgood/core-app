@@ -44,7 +44,7 @@ class Archive extends Controller
             }
 
             // noTip not have results and status
-            if (!$distribution->isNoTip) {
+            if (!$distribution->isNoTip && !($distribution->statusId && $distribution->statusId == '4' ) ) {
                 if (!$distribution->result || !$distribution->statusId) {
                     $notHaveResultOrStatus++;
                     continue;

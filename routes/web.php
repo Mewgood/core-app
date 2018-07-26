@@ -1332,7 +1332,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param array $ids
     // This will create template for preview-and-send, template will have placeholders.
     // @return array()
-    $app->post('/distribution/preview-and-send/preview', 'Admin\Email\Flow@createPreviewWithPlaceholders');
+    // $app->post('/distribution/preview-and-send/preview', 'Admin\Email\Flow@createPreviewWithPlaceholders');
+    $app->post('/distribution/preview-and-send/preview', 'Admin\Email\Flow@createPreviewWithPlaceholdersUpdated');
 
     // Distribution
     // @param $timeStart format h:mm || hh:mm
@@ -1356,16 +1357,50 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // this is use to have a full preview of template with all events included.
     // @param array $ids
     // @return array()
-    $app->post('/distribution/preview-and-send/preview-template', 'Admin\Email\Flow@createFullPreview');
+    // $app->post('/distribution/preview-and-send/preview-template', 'Admin\Email\Flow@createFullPreview');
+    $app->post('/distribution/preview-and-send/preview-template', 'Admin\Email\Flow@createFullPreviewUpdated');
 
     // Distribution
     // @param array $ids
     // @param string|null|false $template
     // This will add events to subscriptions, also will move events to email schedule.
     $app->post('/distribution/preview-and-send/send', function (Request $r) use ($app) {
-
+	
+		// test the subscription emails cron
+		/*
+		$info = [
+            'scheduled' => 0,
+            'message' => []
+        ];
+		
+		$events =  \App\Distribution::where('isEmailSend', '0')
+            ->whereNotNull('mailingDate')
+            ->where('mailingDate', '<=', gmdate('Y-m-d H:i:s'))
+            ->get();
+		
+		$group = [];
+        foreach ($events as $e) {
+            $group[$e->packageId][] = $e->id;
+        }
+		
+		foreach ($group as $gids) {
+            $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
+            // $result = $distributionInstance->associateEventsWithSubscription($gids);
+            $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
+            $info['message'][] = $result['message'];
+            $info['scheduled'] = $info['scheduled'] + count($gids);
+        }
+		
+		return response()->json($info);
+		echo "<pre>";die(print_r($info));
+		*/
+			
         $ids = $r->input('ids');
         $template = $r->input('template');
+		
+		if( !$ids ){
+			$ids = [];
+		}
 
         if (! $template) {
             $group = [];
@@ -1377,7 +1412,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $message = '';
             foreach ($group as $gids) {
                 $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
-                $result = $distributionInstance->associateEventsWithSubscription($gids);
+                // $result = $distributionInstance->associateEventsWithSubscription($gids);
+                $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
                 $message .= $result['message'];
             }
 
@@ -1385,10 +1421,32 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 'type' => 'success',
                 'message' => $message,
             ];
-        }
+        } else {
+			$group = [];
+            $events = \App\Distribution::whereIn('id', $ids)->get();
+            foreach ($events as $e) {
+                $group[$e->packageId][] = $e->id;
+            }
 
+            $message = '';
+            foreach ($group as $gids) {
+                $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
+                // $result = $distributionInstance->associateEventsWithSubscription($gids);
+                $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
+                $message .= $result['message'];
+            }
+
+            return [
+                'type' => 'success',
+                'message' => $message,
+            ];
+		}
+		
+		/*
         $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
-        return $distributionInstance->associateEventsWithSubscription($ids, $template);
+        // return $distributionInstance->associateEventsWithSubscription($ids, $template);
+        return $distributionInstance->associateEventsWithSubscriptionUpdated($ids, $template);
+		*/
     });
 
     // Distribution
@@ -1496,6 +1554,12 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // get all distributed events for specific date.
     // @return array()
     $app->get("/distribution/{date}", 'Admin\Distribution@index');
+	
+	// Distribution
+    // @string $date format: Y-m-d || 0 || null
+    // get all distributed events for specific date  - Gropuped by type
+    // @return array()
+    $app->post("/get-distributions/{date}", 'Admin\Distribution@getDistributionsGrouped');
 
     // Distribution
     // @param array $ids

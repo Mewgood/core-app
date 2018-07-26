@@ -87,6 +87,539 @@ class Distribution extends Controller
         return $data;
     }
 
+	/*
+     * @string $date format: Y-m-d || 0 || null
+     * get all distributed events for specific date.
+     * @return array()
+     */
+    public function getDistributionsGrouped($date = null , Request $r)
+    {
+        $data = [];
+        $response_data = [];
+
+        // default set current date GMT
+        if ($date === null || $date == 0)
+            $date = gmdate('Y-m-d');
+
+        foreach (\App\Site::all() as $site) {
+						
+            // set siteName
+            $data[$site->id]['siteName'] = $site->name;
+            $data[$site->id]['siteId'] = $site->id;
+			
+			$data[$site->id]['package_types'] = [];
+			
+			// $data[$site->id]['packages'] = [];
+
+            // get associated packages frm site_package
+            $assocPacks = \App\SitePackage::select('packageId')->where('siteId', $site->id)->get()->toArray();
+            foreach ($assocPacks as $assocPack) {
+                // get package
+                $package = \App\Package::find($assocPack['packageId']);
+
+                // get events for package
+                $distributedEvents = \App\Distribution::where('packageId', $package->id)->where('systemdate', $date)->get();
+
+                // add status to distributed events
+                foreach ($distributedEvents as $distributedEvent)
+                    $distributedEvent->status;
+				
+				// grup the packages by package type
+				if( !isset( $data[$site->id]['packageTypes'][$package->tipIdentifier] ) && !isset( $data[$site->id]['packageTypes'][$package->tipIdentifier]['packages'] ) ) {
+					$data[$site->id]['packageTypes'][$package->tipIdentifier]['packages'] = [];
+				}
+				
+				// prepare the distribution's package data 
+				$package_data = [];
+				$package_data['id'] = $package->id;
+				$package_data['isVip'] = $package->isVip;
+                $package_data['name'] = $package->name;
+                $package_data['tipsPerDay'] = $package->tipsPerDay;
+                $package_data['eventsNumber'] = count($distributedEvents);
+                $package_data['events'] = $distributedEvents;
+                $package_data['customerNotEnoughTips'] = 0;
+				
+				$data[$site->id]['packageTypes'][$package->tipIdentifier]['packages'][$assocPack['packageId']] = $package_data;
+				
+                $customerNotEnoughTips = 0;
+
+                // check for customer with not enough tips only for current date
+                if ($date == gmdate('Y-m-d')) {
+                    $subscriptionInstance = new \App\Http\Controllers\Admin\Subscription();
+                    $subscriptionIdsNotEnoughTips = $subscriptionInstance->getSubscriptionsIdsWithNotEnoughTips($package->id);
+
+                    foreach ($subscriptionIdsNotEnoughTips as $subscriptionId) {
+                        $subscription = \App\Subscription::find($subscriptionId);
+
+                        // get total availlable tips
+                        $totalTips = $subscription->tipsLeft - $subscription->tipsBlocked;
+                        $todayTipsNumber = \App\Distribution::where('packageId', $subscription->packageId)
+                            ->where('systemDate', gmdate('Y-m-d'))->count();
+
+                        // get number of restricted tips
+                        $restrictedTips = \App\SubscriptionRestrictedTip::where('subscriptionId', $subscription->id)
+                            ->where('systemDate', gmdate('Y-m-d'))
+                            ->count();
+
+                        // increase number of customers who not have enought tips
+                        if (($todayTipsNumber - $restrictedTips) > $totalTips)
+                            $customerNotEnoughTips++;
+                    }
+                }
+
+                $data[$site->id]['packageTypes'][$package->tipIdentifier]['packages'][$assocPack['packageId']]['customerNotEnoughTips'] = $customerNotEnoughTips;
+				
+				
+            }
+			
+        }
+	
+		foreach( $data as $site_data ) {
+			$row_data_temp = [];
+			$row_data_temp['siteName'] = $site_data['siteName'];
+			$row_data_temp['siteId'] = $site_data['siteId'];
+			$row_data_temp['isTotalEmailSend'] = 0;
+			$row_data_temp['totalEmails'] = 0;
+			$row_data_temp['totalSentEmails'] = 0;
+			$row_data_temp['isTotalPublish'] = 0;
+			
+			// Site without packages
+			if( !isset($site_data['packageTypes']) ) {
+				$row_data_temp['type'] = '';
+				$row_data_temp['ruNu'] = '';
+				$row_data_temp['isVip'] = '';
+				$row_data_temp['packages'] = [];
+				$row_data_temp['distributionsIds'] = [];
+				$row_data_temp['distributionIdsString'] = '';
+				$row_data_temp['events'] = [];
+				$row_data_temp['eventsCount'] = 0;
+				$response_data[] = $row_data_temp;
+				continue;
+			}
+			
+			foreach($site_data['packageTypes'] as $identifier => $tipIdentifierPackages ) {
+				$row_data_temp['type'] = $identifier;
+				$row_data_temp['packages'] = [];
+				$row_data_temp['distributionsIds'] = [];
+				$row_data_temp['distributionIdsString'] = '';
+				$row_data_temp['events'] = [];
+				$row_data_temp['eventsCount'] = 0;
+				$packageType_events = [];
+				$eventIds = [];
+				
+				
+				foreach($tipIdentifierPackages['packages'] as $package ) {
+					
+					// get the RU/NU property
+					$p_userType = '';
+					$userType = \App\PackageSection::where('packageId', $package['id'])
+							->where('systemDate', $date)
+							->first();					
+					if( $userType ) {
+						$p_userType = strtoupper($userType->section);
+					}
+					$row_data_temp['ruNu'] = $p_userType;
+					
+					// get packages information
+					$row_data_temp['packages'][] = $package['name'];
+					$row_data_temp['isVip'] = $package['isVip'];
+					
+										
+					// get events / distributions data
+					if(count($package['events']) > 0 ) {
+						foreach($package['events'] as $key => $event ) {
+							
+							// if( !isset( $packageType_events[ $event['eventId'] ] ) ) {
+							if( !in_array( $event['eventId'] , $eventIds ) ) {
+								$event_data = [];
+								
+								// get event time
+								$event_time = substr($event['eventDate'], strpos($event['eventDate'], " ") + 1); 
+								// remove seconds
+								$event_time = substr($event_time, 0 , 5); 
+								
+								$event_data['distributionId'] = $event['id'];
+								$event_data['eventDistributionIds'] = $event['id'];
+								$event_data['eventId'] = $event['eventId'];								
+								$event_data['isEmailSend'] = $event['isEmailSend'];
+								$event_data['isPublish'] = $event['isPublish'];
+								$event_data['mailingDate'] = $event['mailingDate'];
+								
+								$event_data['totalSubscriptions'] = 1;
+								$event_data['totalSentSubscriptions'] = $event['isEmailSend'];
+																
+								if( $event['isNoTip'] ) {
+									$event_data['eventInfo'] = 'NO TIP';
+								} else {									
+									$event_data['eventInfo'] = $event_time . ' | ' . $event['homeTeam'] . ' - ' . $event['awayTeam'] . ' | ' . $event['predictionName'];
+								}
+								
+								// $packageType_events[ $event['eventId'] ] = $event_data;
+								$packageType_events[] = $event_data;
+								$eventIds[] = $event['eventId'];
+								
+							} else {
+								// if the event already exists, then it means that we have multiple distributions in this packageType for this event
+								foreach( $packageType_events as &$eEvent) {
+									if( $event['eventId'] == $eEvent['eventId'] ) {
+										$eEvent['eventDistributionIds'] .= ','.$event['id'];
+										
+										$eEvent['totalSubscriptions']++;
+										$eEvent['totalSentSubscriptions'] += $event['isEmailSend'];
+										break;										
+									}
+								}
+								
+								// if the event / distribution is already added , we'll need to "aggregate" some of the information ( ex: isEmailSent )
+								// if( $packageType_events[ $event['eventId'] ]['isEmailSend'] != $event['isEmailSend'] ) {
+									// $packageType_events[ $event['eventId'] ]['isEmailSend'] = 0;
+								// }
+																
+							}
+														
+							// get the distributionIds 
+							// if( !isset( $row_data_temp['distributionsIds'][ $event['id'] ] ) ) {
+								// $row_data_temp['distributionsIds'][] = $event['id'];
+							// }
+														
+						}
+						
+					}
+					
+				}
+				
+				
+				$row_data_temp['events'] = $packageType_events;
+				$row_data_temp['eventsCount'] = count($packageType_events);
+				// get the 'overall' values for published and emails sent
+				$tmp_published = 1;
+				$tmp_sent = 0;
+				$total_sent_distributions_emails = 0;
+				$total_distributions_emails = 0;
+				foreach($packageType_events as $event ) {
+					if( $event['isPublish'] != 1 ) {
+						$tmp_published = 0;
+					}
+					$total_distributions_emails++;
+					if( $event['isEmailSend'] ) {
+						$total_sent_distributions_emails++;
+					}
+				}
+				if( $total_sent_distributions_emails == $total_distributions_emails && $total_sent_distributions_emails!=0 ) {
+					$tmp_sent = 1;
+					
+				}
+				$row_data_temp['isTotalPublish'] = $tmp_published;
+				$row_data_temp['isTotalEmailSend'] = $tmp_sent;
+				$row_data_temp['totalEmails'] = $total_distributions_emails;
+				$row_data_temp['totalSentEmails'] = $total_sent_distributions_emails;
+			
+				$row_data_temp['distributionIdsString'] = implode( "," , $row_data_temp['distributionsIds'] );
+				$response_data[] = $row_data_temp;
+			}
+			
+		}
+		
+		// sort the results 
+		$real_user_sort = strtolower($r->input('real_user_sort'));
+		$vip_user_sort = strtolower($r->input('vip_user_sort'));
+		$emails_sort =  strtolower($r->input('emails_sort'));
+		
+		if( $real_user_sort == 'ru' || $real_user_sort == 'nu' ) {
+			// $emails_sort = 0;
+			// $vip_user_sort = 0;
+			
+			usort($response_data, function ($a, $b) use ($real_user_sort) {
+				if( strtolower($a['ruNu']) == $real_user_sort && strtolower($b['ruNu']) != $real_user_sort ) {
+					return -1;
+				} elseif( $a['ruNu'] == $b['ruNu'] ) {
+					return 0;
+				} else {
+					return 1; 
+				}
+			});			
+		}
+		
+		if( $vip_user_sort == 'notvip' || $vip_user_sort == 'vip' ) {	
+			// $emails_sort = 0;
+			
+			usort($response_data, function ($a, $b) use ($vip_user_sort) {
+				if( $vip_user_sort == 'vip' ) {
+					return $b['isVip'] - $a['isVip'];
+				} else {
+					return $a['isVip'] - $b['isVip'];
+				}				
+			});			
+		}
+		
+		if( $emails_sort == 'sent' || $emails_sort == 'unsent' ) {					
+			
+			usort($response_data, function ($a, $b) use ($emails_sort) {
+				
+				if( $emails_sort == 'sent' ) {
+					if( $a['isTotalEmailSend'] && !$b['isTotalEmailSend'] ) {
+						return -1;
+					} elseif( $a['isTotalEmailSend'] == $b['isTotalEmailSend'] ) {
+						return 0;
+					} else {
+						return 1; 
+					}
+				} else {
+					if( $a['isTotalEmailSend'] && !$b['isTotalEmailSend'] ) {
+						return 1;
+					} elseif( $a['isTotalEmailSend'] == $b['isTotalEmailSend'] ) {
+						return 0;
+					} else {
+						return -1; 
+					}
+				}
+			});			
+		}
+		
+		
+		/*
+		$row_data = [
+			'distributionsIds' => [ 1, 2, 3, 9] ,
+			'distributionIdsString' => '1, 2, 3, 9' ,
+			'ruNu' => 'RU' ,
+			'siteName' => 'GoForWinners' ,
+			'siteId' => '1' ,
+			'type' => 'tip_1' ,
+			'isVip' => '1' ,
+			'packages' => [ '3 Days' , '30 Days' ] ,
+			'events' => [ eventsData ] , // distributions
+		]
+		$eventsData = [
+			'eventInfo' => '19:00 | Vila Nova GO - Londrina PR | bothToScore-GoForWinners' ,
+			'isPublished' => '1' ,
+			'isEmailSend' => '1' ,
+			'eventId' => '1' ,
+			'distributionId' => '1' ,
+		]
+		
+		*/
+		// dd($response_data);
+		// echo "<pre>";die(print_r($response_data));
+		// return $data;
+		// die();
+		
+		// prepare the site data 	
+		/*
+		foreach( $data as $site_data ) {
+			$row_data_temp = [];
+			$row_data_temp['siteName'] = $site_data['siteName'];
+			$row_data_temp['siteId'] = $site_data['siteId'];
+			$row_data_temp['userType'] = '';
+			$row_data_temp['eventId'] = '';
+			$row_data_temp['isVip'] = '';
+			$row_data_temp['rowSpan'] = '';
+			$row_data_temp['siteNameCell'] = '';
+			$row_data_temp['userTypeCell'] = '';
+			$row_data_temp['packageTypeCell'] = '';
+			$row_data_temp['packageTypeContent'] = '';
+			$row_data_temp['packageTypeName'] = '';
+			$row_data_temp['eventContent'] = '';
+			$row_data_temp['isEmailSend'] = 0;
+			$row_data_temp['isPublish'] = 0;
+			$row_data_temp['sentContent'] = '';
+			$row_data_temp['emailStatusContent'] = '';
+			$row_data_temp['publishedContent'] = '';
+			
+			// there are distributions without packages
+			if( !isset($site_data['packageTypes']) ) {
+				$response_data[] = $row_data_temp;
+				continue;
+			}
+			
+			foreach($site_data['packageTypes'] as $identifier => $tipIdentifierPackages ) {
+				$row_data_temp['packageTypeName'] = $identifier;
+				$row_data_temp['packageTypeContent'] = '';
+								
+				$packageType_events = [];
+				
+				// grup the events 
+				foreach($tipIdentifierPackages['packages'] as $package ) {
+					// prepare package related data 
+					$p_userType = '';
+					// get the RU/NU property
+					$userType = \App\PackageSection::where('packageId', $package['id'])
+							->where('systemDate', $date)
+							->first();					
+					if( $userType ) {
+						$p_userType = strtoupper($userType->section);
+					}
+					
+					$p_name = $package['name'];
+					$p_isVip = $package['isVip'];
+					
+					if(count($package['events']) > 0 ) {
+						foreach($package['events'] as $key => $event ) {
+							
+							if( !isset( $packageType_events[ $event['eventId'] ] ) ) {
+								// new event in packageType
+								$event_data = $row_data_temp;
+								
+								// prepare the data 
+								// get event time
+								$event_time = substr($event['eventDate'], strpos($event['eventDate'], " ") + 1); 
+								// remove seconds
+								$event_time = substr($event_time, 0 , 5); 
+								// $event_time = date("H:i",strtotime($event['eventDate']));
+								
+								$event_data['distributionId'] = $event['id'];
+								$event_data['eventId'] = $event['eventId'];
+								$event_data['isEmailSend'] = $event['isEmailSend'];
+								$event_data['isPublish'] = $event['isPublish'];
+								$event_data['packageTypeContent'] = $p_name;
+								$event_data['userType'] = $p_userType;
+								$event_data['isVip'] = $p_isVip;
+								
+								if( $event['isNoTip'] ) {
+									$event_data['eventContent'] = 'NO TIP';
+								} else {									
+									$event_data['eventContent'] = $event_time . ' | ' . $event['homeTeam'] . ' - ' . $event['awayTeam'] . ' | ' . $event['predictionName'];
+								}
+								
+								if( $event['isEmailSend'] ) {
+									$event_data['sentContent'] = '<span class="label label-sm label-success">'.$event['mailingDate'].'</span>';
+								} else {
+									$event_data['sentContent'] = '<span class="label label-sm label-danger">'.$event['mailingDate'].'</span>';
+								}
+								
+								if( $event['isEmailSend'] ) {
+									$event_data['emailStatusContent'] = '<span class="label label-sm label-success">Received</span>';
+								} else {
+									$event_data['emailStatusContent'] = '<span class="label label-sm label-info">Waiting</span>';
+								}
+								
+								if( $event['isPublish'] ) {
+									$event_data['publishedContent'] = '<span class="label label-sm label-success">Published</span>';
+								} else {
+									$event_data['publishedContent'] = '<span class="label label-sm label-danger">Unpublished</span>';
+								}
+								
+								$packageType_events[ $event['eventId'] ] = $event_data;
+							} else {
+								// merge the events data 
+								$packageType_events[ $event['eventId'] ]['packageTypeContent'] .= '<br>'.$p_name;
+								
+							}
+						}
+					} else {
+						// no event set 
+						$event_data = $row_data_temp;
+						$event_data['eventContent'] = '--- No events distributed in package ---';
+						$event_data['packageTypeContent'] = $p_name;
+						$event_data['userType'] = $p_userType;
+						$event_data['isVip'] = $p_isVip;
+						$event_data['userTypeCell'] = '<td '.$event_data['rowSpan'].' class="distribution-user">'.$p_userType.'</td>';
+						$event_data['siteNameCell'] = '<td '.$event_data['rowSpan'].' class="distribution-site">'.$event_data['siteName'].'</td>';
+						$event_data['packageTypeCell'] = '<td '.$event_data['rowSpan'].' class="distribution-tip">'; 
+						$event_data['packageTypeCell'] .= '<span class="popovers" data-trigger="hover" data-container=".distribution-event" data-html="true" ';
+						$event_data['packageTypeCell'] .= 'data-content="'.$event_data['packageTypeContent'].'" >'.$event_data['packageTypeName'].'</span></td>';
+										
+						// add to results array
+						$response_data[] = $event_data;
+					}
+				}
+				
+				$is_first = true;
+				// add the events to the results array
+				foreach($packageType_events as $eventId => $packageType_event ) {
+					if( $is_first ) {
+						$is_first = false;
+						
+						$packageType_event['rowSpan'] = 'rowspan="'.count($packageType_events).'"';
+						$packageType_event['userType'] = $packageType_event['userType'];
+						$packageType_event['isVip'] = $packageType_event['isVip'];
+								
+						$packageType_event['userTypeCell'] = '<td '.$packageType_event['rowSpan'].' class="distribution-user">'.$packageType_event['userType'].'</td>';
+						$packageType_event['siteNameCell'] = '<td '.$packageType_event['rowSpan'].' class="distribution-site">'.$packageType_event['siteName'].'</td>';
+						$packageType_event['packageTypeCell'] = '<td '.$packageType_event['rowSpan'].' class="distribution-tip">'; 
+						$packageType_event['packageTypeCell'] .= '<span class="popovers" data-trigger="hover" data-container=".distribution-event" data-html="true" ';
+						$packageType_event['packageTypeCell'] .= 'data-content="'.$packageType_event['packageTypeContent'].'" >'.$packageType_event['packageTypeName'].'</span></td>';
+								
+					} else {
+						$packageType_event['userType'] = $packageType_event['userType'];
+						$packageType_event['isVip'] = $packageType_event['isVip'];
+						
+						$packageType_event['userTypeCell'] = '';
+						$packageType_event['siteNameCell'] = '';
+						$packageType_event['packageTypeCell'] = '';
+					}
+					$response_data[] = $packageType_event;
+					
+				}
+				
+			} // end packageTypes loop
+			
+		}
+		
+		
+		// sort the results 
+		$real_user_sort = strtolower($r->input('real_user_sort'));
+		$vip_user_sort = strtolower($r->input('vip_user_sort'));
+		$emails_sort =  strtolower($r->input('emails_sort'));
+		
+		if( $real_user_sort == 'ru' || $real_user_sort == 'nu' ) {
+			// $emails_sort = 0;
+			// $vip_user_sort = 0;
+			
+			usort($response_data, function ($a, $b) use ($real_user_sort) {
+				if( strtolower($a['userType']) == $real_user_sort && strtolower($b['userType']) != $real_user_sort ) {
+					return -1;
+				} elseif( $a['userType'] == $b['userType'] ) {
+					return 0;
+				} else {
+					return 1; 
+				}
+			});			
+		}
+		
+		if( $vip_user_sort == 'notvip' || $vip_user_sort == 'vip' ) {	
+			// $emails_sort = 0;
+			
+			usort($response_data, function ($a, $b) use ($vip_user_sort) {
+				if( $vip_user_sort == 'vip' ) {
+					return $b['isVip'] - $a['isVip'];
+				} else {
+					return $a['isVip'] - $b['isVip'];
+				}				
+			});			
+		}
+		
+		if( $emails_sort == 'sent' || $emails_sort == 'unsent' ) {					
+			
+			usort($response_data, function ($a, $b) use ($emails_sort) {
+				
+				if( $emails_sort == 'sent' ) {
+					if( $a['isEmailSend'] && !$b['isEmailSend'] ) {
+						return -1;
+					} elseif( $a['isEmailSend'] == $b['isEmailSend'] ) {
+						return 0;
+					} else {
+						return 1; 
+					}
+				} else {
+					if( $a['isEmailSend'] && !$b['isEmailSend'] ) {
+						return 1;
+					} elseif( $a['isEmailSend'] == $b['isEmailSend'] ) {
+						return 0;
+					} else {
+						return -1; 
+					}
+				}
+			});			
+		}
+		*/
+		
+		
+		
+        return $response_data;
+        // return $data;
+    }
+	
+		
     public function get() {}
 
     // @param $timeStart format h:mm || hh:mm
@@ -730,4 +1263,181 @@ class Distribution extends Controller
             "message" => $message,
         ];
     }
+	
+	
+	
+	// @param array $ids
+    // @param string|null|false $template
+    // This will add events to subscriptions, also will move events to email schedule.
+	// Created by GDM for the new Distributions page 
+    // return array();
+    public function associateEventsWithSubscriptionUpdated($ids, $template = false)
+    {
+        // validate events selection
+        $validate = new \App\Http\Controllers\Admin\Email\ValidateGroupUpdated($ids);
+        if ($validate->error)
+            return [
+                'type' => 'error',
+                'message' => $validate->message,
+            ];
+
+        $subscriptions = \App\Subscription::where('packageId', $validate->packageId)
+            ->where('status', 'active')->get();
+
+        if (!count($subscriptions))
+            return [
+                'type'    => 'success',
+                'message' => 'No active subscriptions for packageId: ' . $validate->packageId . "\r\n",
+            ];
+
+        // update tips distribution and set mailingDate and is EmailSend
+        foreach ($ids as $id) {
+            $distribution = \App\Distribution::find($id);
+
+            if (! $distribution->mailingDate)
+                $distribution->mailingDate = gmdate('Y-m-d H:i:s');
+
+            $distribution->isEmailSend = '1';
+            $distribution->update();
+        }
+
+        // get package
+        $package = \App\Package::find($validate->packageId);
+
+        // get site by packageId;
+        $site = \App\Site::find($package->siteId);
+
+        // get events from database.
+        $events = \App\Distribution::whereIn('id', $ids)->get()->toArray();
+
+        // set eventDate  according to date format of site
+        foreach ($events as $k => $event) {
+            $events[$k]['eventDate'] = date($site->dateFormat, strtotime($event['eventDate']));
+        }
+
+        $message = "Start sending emails to: \r\n";
+
+        // when use send will not edit template, will not have custom template
+        // here we must remove section
+        if (! $template) {
+            $replaceSection = new \App\Http\Controllers\Admin\Email\RemoveSection($package->template, $validate->isNoTip);
+            $template = $replaceSection->template;
+        }
+
+        foreach ($subscriptions as $s) {
+
+            // remove restricted events
+            $subscriptionEvents = $events;
+            foreach ($subscriptionEvents as $k => $e) {
+                $isRestricted = \App\SubscriptionRestrictedTip::where('subscriptionId', $s->id)
+                    ->where('distributionId', $e['id'])->count();
+
+                if ($isRestricted)
+                    unset($subscriptionEvents[$k]);
+            }
+
+            // if for a subscription there is no event continue.
+            // let say all tips are restricted
+            if (! $subscriptionEvents)
+                continue;
+
+            // if subscription type = tips
+            // will move number of sbscription events from tipsLeft to tipsBlocked
+            // Do not do this for noTip
+            if ($s->type === 'tips' && !$validate->isNoTip) {
+                $eventsNumber = count($subscriptionEvents);
+                $s->tipsBlocked += $eventsNumber;
+                $s->tipsLeft -= $eventsNumber;
+                $s->update();
+
+                // archive subscription if it don't have tips
+                $subscriptionInstance = new \App\Http\Controllers\Admin\Subscription();
+                $subscriptionInstance->manageTipsSubscriptionStatus($s);
+            }
+
+            $customer = \App\Customer::find($s->customerId);
+            $message .= $customer->name . ' - ' .$customer->email . "\r\n";
+
+            // insert all events in subscription_tip_history
+            foreach ($subscriptionEvents as $event) {
+
+                // here will use eventId for event table.
+                \App\SubscriptionTipHistory::create([
+                    'customerId' => $customer->id,
+                    'subscriptionId' => $s->id,
+                    'eventId' => $event['eventId'],
+                    'siteId'  => $s->siteId,
+                    'isCustom' => $s->isCustom,
+                    'type' => $s->type,
+                    'isNoTip' => $event['isNoTip'],
+                    'isVip' => $event['isVip'],
+                    'country' => $event['country'],
+                    'countryCode' => $event['countryCode'],
+                    'league' => $event['league'],
+                    'leagueId' => $event['leagueId'],
+                    'homeTeam' => $event['homeTeam'],
+                    'homeTeamId' => $event['homeTeamId'],
+                    'awayTeam' => $event['awayTeam'],
+                    'awayTeamId' => $event['awayTeamId'],
+                    'predictionId' => $event['predictionId'],
+                    'predictionName' => $event['predictionName'],
+                    'eventDate' => gmdate( $site->dateFormat , strtotime($event['eventDate']) ),
+                    'systemDate' => $event['systemDate'],
+                ]);
+            }
+
+            // replace tips in template
+            $replaceTips = new \App\Http\Controllers\Admin\Email\ReplaceTipsInTemplate($template, $subscriptionEvents, $validate->isNoTip);
+
+            // replace customer information in template
+            $replaceCustomerInfoTemplate = new \App\Http\Controllers\Admin\Email\ReplaceCustomerInfoInTemplate(
+                $replaceTips->template,
+                $customer
+            );
+
+            // store all data to send email
+            $args = [
+                'provider'        => 'site',
+                'sender'          => $site->id,
+                'type'            => 'subscriptionEmail',
+                'identifierName'  => 'subscriptionId',
+                'identifierValue' => $s->id,
+                'from'            => $site->email,
+                'fromName'        => $package->fromName,
+                'to'              => $customer->activeEmail,
+                'toName'          => $customer->name ? $customer->name : $customer->activeEmail,
+                'subject'         => str_replace('{{date}}', gmdate($site->dateFormat, time()), $package->subject),
+                'body'            => $replaceCustomerInfoTemplate->template,
+                'status'          => 'waiting',
+            ];
+
+            // insert in email_schedule
+            \App\EmailSchedule::create($args);
+        }
+
+        // send also email to site email for confimation tips are sended.
+        $replaceTipsInTemplateInstance = new \App\Http\Controllers\Admin\Email\ReplaceTipsInTemplate($template, $events, $validate->isNoTip);
+        $template = $replaceTipsInTemplateInstance->template;
+
+        \App\EmailSchedule::create([
+            'provider'        => 'packageDailyTips',
+            'sender'          => $site->id,
+            'type'            => 'dailyTipsCheck',
+            'identifierName'  => 'packageId',
+            'identifierValue' => $package->id,
+            'from'            => getenv('EMAIL_USER'),
+            'fromName'        => $package->fromName,
+            'to'              => $site->email,
+            'toName'          => $site->name,
+            'subject'         => str_replace('{{date}}', gmdate($site->dateFormat, time()), $package->subject),
+            'body'            => $template,
+            'status'          => 'waiting',
+        ]);
+
+        return [
+            'type'    => 'success',
+            'message' => $message,
+        ];
+    }
+	
 }

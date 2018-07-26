@@ -20,6 +20,7 @@ class DistributionEmailSchedule extends CronCommand
             'message' => []
         ];
 
+		
         $group = [];
         foreach ($events as $e) {
             $group[$e->packageId][] = $e->id;
@@ -27,7 +28,8 @@ class DistributionEmailSchedule extends CronCommand
 
         foreach ($group as $gids) {
             $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
-            $result = $distributionInstance->associateEventsWithSubscription($gids);
+            // $result = $distributionInstance->associateEventsWithSubscription($gids);
+            $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
             $info['message'][] = $result['message'];
             $info['scheduled'] = $info['scheduled'] + count($gids);
         }

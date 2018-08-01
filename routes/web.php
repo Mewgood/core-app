@@ -1642,3 +1642,57 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     });
 
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Added by GDM - test function
+    $app->get('gdm-test/distribution/test-schedule', function (Request $r) use ($app) {
+		
+		// test the subscription emails cron
+		
+		
+		$info = [
+            'scheduled' => 0,
+            'message' => []
+        ];
+		
+		$events =  \App\Distribution::where('isEmailSend', '0')
+            ->whereNotNull('mailingDate')
+            ->where('mailingDate', '<=', gmdate('Y-m-d H:i:s'))
+            ->get();
+		
+		$group = [];
+        foreach ($events as $e) {
+            $group[$e->packageId][] = $e->id;
+        }
+		
+		foreach ($group as $gids) {
+            $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
+            // $result = $distributionInstance->associateEventsWithSubscription($gids);
+            $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
+            $info['message'][] = $result['message'];
+            $info['scheduled'] = $info['scheduled'] + count($gids);
+        }
+		
+		return response()->json($info);
+		echo "<pre>";die(print_r($info));
+		
+	});

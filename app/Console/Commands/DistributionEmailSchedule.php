@@ -44,6 +44,7 @@ class DistributionEmailSchedule extends CronCommand
         return \App\Distribution::where('isEmailSend', '0')
             ->whereNotNull('mailingDate')
             ->where('mailingDate', '<=', gmdate('Y-m-d H:i:s'))
+			->where('eventDate', '>', Carbon::now('UTC')->addMinutes(5))
             ->get();
     }
 }

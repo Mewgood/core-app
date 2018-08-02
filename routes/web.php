@@ -1667,7 +1667,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     $app->get('gdm-test/distribution/test-schedule', function (Request $r) use ($app) {
 		
 		// test the subscription emails cron
-		
+		// die(Carbon::now('UTC')->addMinutes(5));
+		// die(gmdate('Y-m-d H:i:s'));
 		
 		$info = [
             'scheduled' => 0,
@@ -1677,6 +1678,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 		$events =  \App\Distribution::where('isEmailSend', '0')
             ->whereNotNull('mailingDate')
             ->where('mailingDate', '<=', gmdate('Y-m-d H:i:s'))
+			->where('eventDate', '>', Carbon::now('UTC')->addMinutes(5))
             ->get();
 		
 		$group = [];

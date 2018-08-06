@@ -173,7 +173,8 @@ class Distribution extends Controller
             }
 			
         }
-	
+		
+		// loop through the 'original' distributions and re-arrage and prepare the final distribution list.
 		foreach( $data as $site_data ) {
 			$row_data_temp = [];
 			$row_data_temp['siteName'] = $site_data['siteName'];
@@ -247,11 +248,23 @@ class Distribution extends Controller
 								
 								$event_data['totalSubscriptions'] = 1;
 								$event_data['totalSentSubscriptions'] = $event['isEmailSend'];
+								
+								// echo "<pre>"; die(print_r($event['status']['name']));
 																
 								if( $event['isNoTip'] ) {
 									$event_data['eventInfo'] = 'NO TIP';
-								} else {									
-									$event_data['eventInfo'] = $event_time . ' | ' . $event['homeTeam'] . ' - ' . $event['awayTeam'] . ' | ' . $event['predictionName'];
+								} else {
+									if( isset($event['status']) && $event['status'] && isset($event['status']['name']) ) {
+										$event_status = $event['status']['name'];
+									} else {
+										$event_status = '???';
+									}
+									if( $event['result'] != '' ) {
+										$event_result = $event['result'];
+									} else {
+										$event_result = ' - ';
+									}
+									$event_data['eventInfo'] = $event_time.' | '.$event['homeTeam'].' - '.$event['awayTeam'].' | '.$event['predictionName'].' | '.$event_result.' | '.$event_status;
 								}
 								
 								// $packageType_events[ $event['eventId'] ] = $event_data;
@@ -376,7 +389,7 @@ class Distribution extends Controller
 			});			
 		}
 		
-		
+		// old implementation tries - TO BE DELETED - kept as reference for now 
 		/*
 		$row_data = [
 			'distributionsIds' => [ 1, 2, 3, 9] ,

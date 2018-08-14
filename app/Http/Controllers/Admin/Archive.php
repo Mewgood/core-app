@@ -92,6 +92,21 @@ class Archive extends Controller
                     'type'   => 'archiveHome'
                 ]);
 
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $distribution['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$distribution['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $distribution['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$distribution['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $distribution['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$distribution['league'] = $leagueAlias->alias;
+			}
+			
+			
             // ---- Insert event in archive big
             \App\ArchiveBig::create($distribution);
 
@@ -108,6 +123,7 @@ class Archive extends Controller
             if ($distribution['publishTime'])
                 $distribution['publishDate'] = gmdate('Y-m-d H:i:s', $distribution['publishTime']);
 
+			
             // insert event in archive home
             \App\ArchiveHome::create($distribution);
 

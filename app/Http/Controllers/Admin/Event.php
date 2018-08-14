@@ -106,6 +106,21 @@ class Event extends Controller
         }
 
         unset($match['id']);
+		
+		// get the aliases - added by GDM
+		$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $match['homeTeamId'] )->first();
+		if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+			$match['homeTeam'] = $homeTeamAlias->alias;
+		}		
+		$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $match['awayTeamId'] )->first();
+		if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+			$match['awayTeam'] = $awayTeamAlias->alias;
+		}		
+		$leagueAlias = \App\Models\League\Alias::where('leagueId', $match['leagueId'] )->first();
+		if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+			$match['league'] = $leagueAlias->alias;
+		}
+		
 
         $event = \App\Event::create($match);
 
@@ -228,7 +243,21 @@ class Event extends Controller
                 'message' => "This events already exists with same prediction",
             ];
         }
-
+		
+		// get the aliases - added by GDM
+		$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $homeTeamId)->first();
+		if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+			$homeTeam = $homeTeamAlias->alias;
+		}		
+		$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $awayTeamId)->first();
+		if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+			$awayTeam = $awayTeamAlias->alias;
+		}		
+		$leagueAlias = \App\Models\League\Alias::where('leagueId', $leagueId)->first();
+		if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+			$league = $leagueAlias->alias;
+		}
+		
 		// prepare the event data
 		$eventData = [];
         $eventData['country'] = $country;

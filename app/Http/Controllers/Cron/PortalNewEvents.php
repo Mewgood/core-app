@@ -101,6 +101,21 @@ class PortalNewEvents extends Controller
             //    file_put_contents($rootDir . '/public/logo/team/' . $m['awayTeamId'] . '.png', $content);
             //}
 
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $m['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$m['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $m['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$m['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $m['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$m['league'] = $leagueAlias->alias;
+			}
+			
+			
             // store new match
             \App\Match::create($m);
 

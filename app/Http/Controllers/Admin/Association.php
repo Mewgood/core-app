@@ -219,6 +219,20 @@ class Association extends Controller
             $event['isVip'] = $vip;
             $event['type'] = $table;
             $event['systemDate'] = $systemDate;
+			
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $event['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$event['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $event['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$event['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $event['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$event['league'] = $leagueAlias->alias;
+			}
 
             \App\Association::create($event);
             $success++;

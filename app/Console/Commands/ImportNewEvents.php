@@ -121,6 +121,12 @@ class ImportNewEvents extends CronCommand
             if ($awayTeamAlias != null)
                 $m['awayTeam'] = $awayTeamAlias;
 
+			// get the league alias - added by GDM
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $m['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$m['league'] = $leagueAlias->alias;
+			}
+			
             // store new match
             \App\Match::create($m);
 

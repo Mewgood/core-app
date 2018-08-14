@@ -264,7 +264,7 @@ class Distribution extends Controller
 									} else {
 										$event_result = ' - ';
 									}
-									$event_data['eventInfo'] = $event_time.' | '.$event['homeTeam'].' - '.$event['awayTeam'].' | '.$event['predictionName'].' | '.$event_result.' | '.$event_status;
+									$event_data['eventInfo'] = '<span class="distribution-event-container"><span class="dist-event-date">' . $event_time. '</span> | <span class="dist-event-teams">' .$event['homeTeam'].' - '.$event['awayTeam']. '</span> | <span class="dist-event-predictions">' .$event['predictionName']. '</span> | <span class="dist-event-result">'.$event_result.'</span> | <span class="dist-event-status '.$event_status . '">'.$event_status . '</span></span>';
 								}
 								
 								// $packageType_events[ $event['eventId'] ] = $event_data;
@@ -957,6 +957,20 @@ class Distribution extends Controller
 
             // set packageId
             $association['packageId'] = $id;
+			
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $association['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$association['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $association['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$association['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $association['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$association['league'] = $leagueAlias->alias;
+			}
 
             \App\Distribution::create($association);
             $inserted++;
@@ -1071,7 +1085,21 @@ class Distribution extends Controller
 
             // insert all events in subscription_tip_history
             foreach ($subscriptionEvents as $event) {
-
+				// get the aliases - added by GDM
+				$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $event['homeTeamId'] )->first();
+				if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+					$event['homeTeam'] = $homeTeamAlias->alias;
+				}		
+				$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $event['awayTeamId'] )->first();
+				if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+					$event['awayTeam'] = $awayTeamAlias->alias;
+				}		
+				$leagueAlias = \App\Models\League\Alias::where('leagueId', $event['leagueId'] )->first();
+				if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+					$event['league'] = $leagueAlias->alias;
+				}
+				
+				
                 // here will use eventId for event table.
                 \App\SubscriptionTipHistory::create([
                     'customerId' => $customer->id,
@@ -1373,7 +1401,20 @@ class Distribution extends Controller
 
             // insert all events in subscription_tip_history
             foreach ($subscriptionEvents as $event) {
-
+				// get the aliases - added by GDM
+				$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $event['homeTeamId'] )->first();
+				if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+					$event['homeTeam'] = $homeTeamAlias->alias;
+				}		
+				$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $event['awayTeamId'] )->first();
+				if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+					$event['awayTeam'] = $awayTeamAlias->alias;
+				}		
+				$leagueAlias = \App\Models\League\Alias::where('leagueId', $event['leagueId'] )->first();
+				if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+					$event['league'] = $leagueAlias->alias;
+				}
+				
                 // here will use eventId for event table.
                 \App\SubscriptionTipHistory::create([
                     'customerId' => $customer->id,

@@ -180,8 +180,23 @@ class AutoUnitAddEvents extends CronCommand
             ->where('predictionId', $event['predictionId'])
             ->first();
 
-        if (! $ev)
+        if (! $ev) {
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $event['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$event['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $event['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$event['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $event['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$event['league'] = $leagueAlias->alias;
+			}
+			
             $ev = \App\Event::create($event);
+		}
 
         return $ev->toArray();
     }
@@ -201,6 +216,20 @@ class AutoUnitAddEvents extends CronCommand
 
             $event['isNoTip'] = '';
             $event['systemDate'] = $this->systemDate;
+			
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $event['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$event['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $event['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$event['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $event['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$event['league'] = $leagueAlias->alias;
+			}
 
             $assoc = \App\Association::create($event);
         }
@@ -237,6 +266,20 @@ class AutoUnitAddEvents extends CronCommand
             $assoc['tableIdentifier'] = $package->tableIdentifier;
             $assoc['tipIdentifier'] = $package->tipIdentifier;
             $assoc['packageId'] = $package->id;
+			
+			// get the aliases - added by GDM
+			$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $assoc['homeTeamId'] )->first();
+			if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+				$assoc['homeTeam'] = $homeTeamAlias->alias;
+			}		
+			$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $assoc['awayTeamId'] )->first();
+			if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+				$assoc['awayTeam'] = $awayTeamAlias->alias;
+			}		
+			$leagueAlias = \App\Models\League\Alias::where('leagueId', $assoc['leagueId'] )->first();
+			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+				$assoc['league'] = $leagueAlias->alias;
+			}
 
             \App\Distribution::create($assoc);
         }

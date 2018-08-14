@@ -24,9 +24,13 @@ class Leagues extends Controller
 	/* Returns all leagues for a given country */
 	public function getCountryLeagues( $countryCode ) {
 		
-		$leagues = \App\League::select('league.*')
+		// $leagues = \App\League::select( 'league.*' )
+		$leagues = \App\League::select( [ 'league.id' , \DB::raw( " if( `league_alias`.`alias` is not null , `league_alias`.`alias` , `league`.`name` ) as name ") ] )
 			->join("league_country", function($join) {
                 $join->on('league_country.leagueId', '=', 'league.id');
+            })
+			->leftJoin("league_alias", function($leftJoin) {
+                $leftJoin->on('league_alias.leagueId', '=', 'league.id');
             })
 			->where('league_country.countryCode','=',$countryCode)
 			->get();
@@ -36,9 +40,13 @@ class Leagues extends Controller
 	
 	/* Returns all teams from a given league - if provided , it will not return a given team */
 	public function getLeagueTeams( $league , $exclude = null ) {
-		$teams = \App\Team::select('team.*')
+		// $teams = \App\Team::select('team.*')
+		$teams = \App\Team::select( [ 'team.id' ,  \DB::raw( " if( `team_alias`.`alias` is not null , `team_alias`.`alias` , `team`.`name` ) as name ") ] )
 			->join("import_teams_leagues", function($join) {
                 $join->on('import_teams_leagues.team_id', '=', 'team.id');
+            })
+			->leftJoin("team_alias", function($leftJoin) {
+                $leftJoin->on('team_alias.teamId', '=', 'team.id');
             })
 			->where('import_teams_leagues.league_id','=',$league)
 			->get();

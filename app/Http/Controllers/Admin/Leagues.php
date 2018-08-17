@@ -16,7 +16,12 @@ class Leagues extends Controller
     
 	/* Returns a list of all countries in the DB table */
 	public function getAllCountries() {
-		$countries = \App\Country::get();
+		// $countries = \App\Country::get();
+		$countries = \App\Country::select( [ 'country.code' , \DB::raw( " if( `country_alias`.`alias` is not null , `country_alias`.`alias` , `country`.`name` ) as name ") ] )
+			->leftJoin("country_alias", function($leftJoin) {
+                $leftJoin->on('country_alias.countryCode', '=', 'country.code');
+            })
+			->get();
 		
 		return $countries;
 	}

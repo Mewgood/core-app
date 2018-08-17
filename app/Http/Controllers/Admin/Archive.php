@@ -106,6 +106,11 @@ class Archive extends Controller
 				$distribution['league'] = $leagueAlias->alias;
 			}
 			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $distribution['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$distribution['country'] = $countryAlias->alias;
+			}
+			
 			
             // ---- Insert event in archive big
             \App\ArchiveBig::create($distribution);

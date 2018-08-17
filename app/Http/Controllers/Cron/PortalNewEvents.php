@@ -115,6 +115,12 @@ class PortalNewEvents extends Controller
 				$m['league'] = $leagueAlias->alias;
 			}
 			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $m['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$m['country'] = $countryAlias->alias;
+			}
+			
+			
 			
             // store new match
             \App\Match::create($m);

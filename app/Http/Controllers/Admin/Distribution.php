@@ -971,6 +971,12 @@ class Distribution extends Controller
 			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 				$association['league'] = $leagueAlias->alias;
 			}
+			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $association['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$association['country'] = $countryAlias->alias;
+			}
+			
 
             \App\Distribution::create($association);
             $inserted++;
@@ -1098,6 +1104,12 @@ class Distribution extends Controller
 				if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 					$event['league'] = $leagueAlias->alias;
 				}
+				
+				$countryAlias = \App\Models\Country\Alias::where('countryCode', $event['countryCode'] )->first();
+				if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+					$event['country'] = $countryAlias->alias;
+				}
+				
 				
 				
                 // here will use eventId for event table.
@@ -1414,6 +1426,12 @@ class Distribution extends Controller
 				if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 					$event['league'] = $leagueAlias->alias;
 				}
+				
+				$countryAlias = \App\Models\Country\Alias::where('countryCode', $event['countryCode'] )->first();
+				if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+					$event['country'] = $countryAlias->alias;
+				}
+				
 				
                 // here will use eventId for event table.
                 \App\SubscriptionTipHistory::create([

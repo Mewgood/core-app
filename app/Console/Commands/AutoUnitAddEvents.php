@@ -195,6 +195,12 @@ class AutoUnitAddEvents extends CronCommand
 				$event['league'] = $leagueAlias->alias;
 			}
 			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $event['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$event['country'] = $countryAlias->alias;
+			}
+			
+			
             $ev = \App\Event::create($event);
 		}
 
@@ -230,6 +236,12 @@ class AutoUnitAddEvents extends CronCommand
 			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 				$event['league'] = $leagueAlias->alias;
 			}
+			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $event['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$event['country'] = $countryAlias->alias;
+			}
+			
 
             $assoc = \App\Association::create($event);
         }
@@ -280,6 +292,12 @@ class AutoUnitAddEvents extends CronCommand
 			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 				$assoc['league'] = $leagueAlias->alias;
 			}
+			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $assoc['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$assoc['country'] = $countryAlias->alias;
+			}
+			
 
             \App\Distribution::create($assoc);
         }

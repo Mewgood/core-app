@@ -95,7 +95,69 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     $app->get('/country/all', function () use ($app) {
         return \App\Country::all();
     });
+			
+	// @param string $countryCode
+    // @param string $alias
+    // @return array();
+    $app->post('/country/alias/{countryCode}', function (Request $r, $countryCode) use ($app) {
+		
+		
+        $countryAlias = $r->input('alias');
+		$countryData = ['country' => $countryAlias];
 
+        // update match
+        \App\Match::where('countryCode', $countryCode)->update($countryData);
+        // update event
+        \App\Event::where('countryCode', $countryCode)->update($countryData);
+        // update association
+        \App\Association::where('countryCode', $countryCode)->update($countryData);
+        // update distribution
+        \App\Distribution::where('countryCode', $countryCode)->update($countryData);
+        // update archiveHome
+        \App\ArchiveHome::where('countryCode', $countryCode)->update($countryData);
+        // update archiveBig
+        \App\ArchiveBig::where('countryCode', $countryCode)->update($countryData);
+        // update subscriptionTipHistory
+        \App\SubscriptionTipHistory::where('countryCode', $countryCode)->update($countryData);
+
+        $oldAlias = \App\Models\Country\Alias::where('countryCode', $countryCode)
+            ->first();
+
+					
+        if ($oldAlias) {
+			
+			\App\Models\Country\Alias::where('countryCode', $countryCode)->update( ['alias' => $countryAlias ] );
+			
+            return [
+                'type' => 'success',
+                'message'  => 'Alias for country was updated with success!',
+            ];
+        }
+
+        \App\Models\Country\Alias::create([
+            'countryCode' => $countryCode,
+            'alias' => $countryAlias,
+        ]);
+
+        return [
+            'type' => 'success',
+            'message'  => 'Alias for country was created with success!',
+        ];
+		/*
+		*/
+
+    });
+
+	// @param $countryCode
+    // @return string
+    $app->get('/country/alias/get/{countryCode}', function ($countryCode) use ($app) {
+        $alias = \App\Models\Country\Alias::where('countryCode', $countryCode)->first();
+        return [
+            'countryCode' => $countryCode,
+            'alias'  => $alias ? $alias->alias : '',
+        ];
+    });
+	
     /*
      * Team
      ---------------------------------------------------------------------*/

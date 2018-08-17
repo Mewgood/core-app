@@ -233,6 +233,12 @@ class Association extends Controller
 			if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 				$event['league'] = $leagueAlias->alias;
 			}
+			
+			$countryAlias = \App\Models\Country\Alias::where('countryCode', $event['countryCode'] )->first();
+			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+				$event['country'] = $countryAlias->alias;
+			}
+			
 
             \App\Association::create($event);
             $success++;

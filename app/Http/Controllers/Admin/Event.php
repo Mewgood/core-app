@@ -121,6 +121,12 @@ class Event extends Controller
 			$match['league'] = $leagueAlias->alias;
 		}
 		
+		$countryAlias = \App\Models\Country\Alias::where('countryCode', $match['countryCode'] )->first();
+		if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+			$match['country'] = $countryAlias->alias;
+		}
+		
+		
 
         $event = \App\Event::create($match);
 
@@ -256,6 +262,11 @@ class Event extends Controller
 		$leagueAlias = \App\Models\League\Alias::where('leagueId', $leagueId)->first();
 		if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
 			$league = $leagueAlias->alias;
+		}
+		
+		$countryAlias = \App\Models\Country\Alias::where('countryCode', $countryCode )->first();
+		if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+			$country = $countryAlias->alias;
 		}
 		
 		// prepare the event data

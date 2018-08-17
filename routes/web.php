@@ -99,7 +99,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 	// @param string $countryCode
     // @param string $alias
     // @return array();
-    $app->post('/country/alias/{countryCode}', function (Request $r, $countryCode) use ($app) {
+    $app->post('/country/set-alias/{countryCode}', function (Request $r, $countryCode) use ($app) {
 		
 		
         $countryAlias = $r->input('alias');
@@ -150,7 +150,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
 	// @param $countryCode
     // @return string
-    $app->get('/country/alias/get/{countryCode}', function ($countryCode) use ($app) {
+    $app->get('/country/get-country-alias/{countryCode}', function ($countryCode) use ($app) {
         $alias = \App\Models\Country\Alias::where('countryCode', $countryCode)->first();
         return [
             'countryCode' => $countryCode,

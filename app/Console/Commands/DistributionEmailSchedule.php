@@ -1,4 +1,8 @@
-<?php namespace App\Console\Commands;
+<?php 
+
+namespace App\Console\Commands;
+
+use Carbon\Carbon;
 
 class DistributionEmailSchedule extends CronCommand
 {
@@ -7,12 +11,9 @@ class DistributionEmailSchedule extends CronCommand
 
     public function fire()
     {
-        $cron = $this->startCron();
-
         $events = $this->loadData();
 
         if (!$events) {
-            $this->stopCron($cron, []);
             return true;
         }
         $info = [
@@ -20,7 +21,6 @@ class DistributionEmailSchedule extends CronCommand
             'message' => []
         ];
 
-		
         $group = [];
         foreach ($events as $e) {
             $group[$e->packageId][] = $e->id;
@@ -28,14 +28,17 @@ class DistributionEmailSchedule extends CronCommand
 
         foreach ($group as $gids) {
             $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
-            // $result = $distributionInstance->associateEventsWithSubscription($gids);
             $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
             $info['message'][] = $result['message'];
             $info['scheduled'] = $info['scheduled'] + count($gids);
         }
 
-        $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        $this->info(json_encode([
+            "info" => $info, 
+            "message" => "Email where scheduled",
+            "date" => gmdate('Y-m-d H:i:s')
+        ]));
+
         return true;
     }
 
@@ -44,7 +47,7 @@ class DistributionEmailSchedule extends CronCommand
         return \App\Distribution::where('isEmailSend', '0')
             ->whereNotNull('mailingDate')
             ->where('mailingDate', '<=', gmdate('Y-m-d H:i:s'))
-			->where('eventDate', '>', Carbon::now('UTC')->addMinutes(5))
+            ->where('eventDate', '>=', Carbon::now('UTC')->addMinutes(5))
             ->get();
     }
 }

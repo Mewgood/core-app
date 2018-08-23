@@ -8,6 +8,8 @@ use App\Console\Commands\ImportNewEvents;
 use App\Console\Commands\SetResultAndStatus;
 use App\Console\Commands\PublishArchives;
 use App\Console\Commands\AutoUnitAddEvents;
+use App\Console\Commands\SendMail;
+
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
 
@@ -25,6 +27,7 @@ class Kernel extends ConsoleKernel
         SetResultAndStatus::class,
         PublishArchives::class,
         AutoUnitAddEvents::class,
+        SendMail::class,
     ];
 
     /**
@@ -35,6 +38,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $filePath = storage_path('logs/cron.log');
         // process day subscriptions at end of day
         //   - if no event add noTip
         //   - archive subscriptions
@@ -44,9 +48,14 @@ class Kernel extends ConsoleKernel
             new \App\Http\Controllers\Cron\ProcessDaysSubscription();
         })->timezone('GMT')->dailyAt('00:01');
 
-        // send for email_schedule each minute
-        $schedule->call(function() {
-            new \App\Http\Controllers\Cron\SendMail();
-        })->everyMinute();
+        // schedule the emails
+        $schedule->command('distribution:pre-send')
+            ->everyMinute()
+            ->appendOutputTo($filePath);
+        
+        // send every scheduled emails
+        $schedule->command('email:send')
+            ->everyMinute()
+            ->appendOutputTo($filePath);
     }
 }

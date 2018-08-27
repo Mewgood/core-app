@@ -1,4 +1,8 @@
-<?php namespace App\Console\Commands;
+<?php 
+
+namespace App\Console\Commands;
+
+use Illuminate\Support\Facades\Log;
 
 class PublishArchives extends CronCommand
 {
@@ -7,12 +11,14 @@ class PublishArchives extends CronCommand
 
     public function fire()
     {
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
 
         $info = [
             'published' => 0,
             'notPublished' => 0,
         ];
+
+        $data = [];
 
         $maxDate = gmdate('Y-m-d H:i:s', time() - 60 * 60);
         $archives = \App\ArchivePublishStatus::where('created_at', '>', $maxDate)
@@ -33,11 +39,17 @@ class PublishArchives extends CronCommand
             }
 
             $info['notPublished']++;
+            $data[] = $wasPublish;
             $info['errors'][] = $wasPublish['message'];
         }
 
-        $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        $this->info(json_encode([
+            "data" => $data,
+            "info" => $info, 
+            "message" => "Archive Home sent",
+            "date" => gmdate('Y-m-d H:i:s')
+        ]));
+        //$this->stopCron($cron, $info);
         return true;
     }
 }

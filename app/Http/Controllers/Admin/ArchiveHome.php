@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ArchiveHome extends Controller
 {
@@ -19,10 +21,17 @@ class ArchiveHome extends Controller
         $tableIdentifier = $r->input('tableIdentifier');
 
         // get events
-        $data['events'] = \App\ArchiveHome::where('siteId', $siteId)
+        $data['events'] = \App\ArchiveHome::select(
+                "*",
+                DB::raw("DATE(eventDate) AS eventDate")
+            )
+            ->where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
-            ->orderBy('order', 'asc')
-            ->get()->toArray();
+            ->orderBy('order', 'ASC')
+            ->orderBy('isVip', 'ASC')
+            ->orderBy('eventDate', 'DESC')
+            ->get()
+            ->toArray();
 
         // get archive home config
         $data['conf'] = \App\ArchiveHomeConf::where('siteId', $siteId)
@@ -224,10 +233,13 @@ class ArchiveHome extends Controller
            $predictions[$v['predictionIdentifier']] = $v;
 
         $currentDate = gmdate('Y-m-d H:i:s');
-        $events = \App\ArchiveHome::where('siteId', $id)
+        $events = \App\ArchiveHome::where('siteId', 2)
             ->where('isVisible', '1')
-            ->orderBy('order', 'asc')->get()->toArray();
-
+            ->orderBy('order', 'ASC')
+            ->orderBy('isVip', 'ASC')
+            ->orderBy('eventDate', 'DESC')
+            ->get()
+            ->toArray();
         $vipFlags = [];
 
         $data = [];

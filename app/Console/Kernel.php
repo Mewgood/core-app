@@ -27,7 +27,7 @@ class Kernel extends ConsoleKernel
         SetResultAndStatus::class,
         PublishArchives::class,
         AutoUnitAddEvents::class,
-        SendMail::class,
+        SendMail::class
     ];
 
     /**
@@ -55,6 +55,10 @@ class Kernel extends ConsoleKernel
         
         // send every scheduled emails
         $schedule->command('email:send')
+            ->everyMinute()
+            ->appendOutputTo($filePath);
+            
+        $schedule->command('publish:archives')
             ->everyMinute()
             ->appendOutputTo($filePath);
     }

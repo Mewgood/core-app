@@ -46,7 +46,10 @@ class ArchiveBig extends Controller
             ->where('tableIdentifier', $tableIdentifier)
             ->where('systemDate', '>=', $date . '-01')
             ->where('systemDate', '<=', $date . '-31')
-			->orderBy('systemDate', 'desc')->get()->toArray();
+			->orderBy('isVip', 'ASC')
+            ->orderBy('eventDate', 'DESC')
+            ->get()
+            ->toArray();
 
 		foreach ($data as $key => $value) {
 			switch ($value['statusId']) {
@@ -202,10 +205,14 @@ class ArchiveBig extends Controller
         foreach (\App\SitePrediction::where('siteId', $id)->get()->toArray() as $k => $v)
            $predictions[$v['predictionIdentifier']] = $v;
 
-        $events = \App\ArchiveBig::where('siteId', $id)
+        $events = \App\ArchiveBig::where('siteId', 2)
             ->where('isPublishInSite', '1')
             ->where('isVisible', '1')
-            ->orderBy('systemDate', 'desc')->get()->toArray();
+            ->orderBy('order', 'ASC')
+            ->orderBy('isVip', 'ASC')
+            ->orderBy('eventDate', 'DESC')
+            ->get()
+            ->toArray();
 
         $vipFlags = [];
 
@@ -240,7 +247,6 @@ class ArchiveBig extends Controller
             $month = date('m', strtotime($e['systemDate']));
             $data[$table][$year][$month][] = $e;
         }
-
         return $data;
     }
 }

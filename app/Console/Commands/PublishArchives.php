@@ -11,8 +11,6 @@ class PublishArchives extends CronCommand
 
     public function fire()
     {
-        //$cron = $this->startCron();
-
         $info = [
             'published' => 0,
             'notPublished' => 0,
@@ -49,7 +47,7 @@ class PublishArchives extends CronCommand
             "message" => "Archive Home sent",
             "date" => gmdate('Y-m-d H:i:s')
         ]));
-        //$this->stopCron($cron, $info);
+
         return true;
     }
 }

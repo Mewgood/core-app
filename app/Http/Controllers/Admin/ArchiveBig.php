@@ -46,7 +46,7 @@ class ArchiveBig extends Controller
             ->where('tableIdentifier', $tableIdentifier)
             ->where('systemDate', '>=', $date . '-01')
             ->where('systemDate', '<=', $date . '-31')
-			->orderBy('isVip', 'ASC')
+            ->orderBy('isVip', 'ASC')
             ->orderBy('eventDate', 'DESC')
             ->get()
             ->toArray();
@@ -208,7 +208,6 @@ class ArchiveBig extends Controller
         $events = \App\ArchiveBig::where('siteId', 2)
             ->where('isPublishInSite', '1')
             ->where('isVisible', '1')
-            ->orderBy('order', 'ASC')
             ->orderBy('isVip', 'ASC')
             ->orderBy('eventDate', 'DESC')
             ->get()

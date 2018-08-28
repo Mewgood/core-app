@@ -1299,6 +1299,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string  $awayTeam
     // @return array()
     $app->post('/event/create-manually', 'Admin\Event@createManual');
+    $app->post('/event/create-manually-bulk', 'Admin\Event@createManualBulk');
 	
 	
     /*

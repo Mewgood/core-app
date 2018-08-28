@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Models\Events\EventModel;
 
 class Event extends Controller
 {
@@ -299,7 +301,53 @@ class Event extends Controller
         ];
 		
     }
-	
+    
+    // add event manually
+    // @param array $r Array containing a list of events
+    //      @param integer $country
+    //      @param integer $league
+    //      @param integer $homeTeam
+    //      @param integer $awayTeam
+    //      @param integer $homeTeamId
+    //      @param integer $awayTeamId
+    //      @param integer $leagueId
+    //      @param integer $countryCode
+    //      @param integer $eventDate
+    //      @param string  $predictionId
+    //      @param string  $odd
+    // @return array()
+    public function createManualBulk(Request $r)
+    {
+        $events = [];
+        DB::beginTransaction();
+
+        try {
+            $events = EventModel::bulkInsert($r->all()["events"]);
+        } catch(\Exception $e) {
+            DB::rollback();
+
+            return [
+                'type' => 'error',
+                'message' => $e->getMessage() . "\n" . $e->getFile().' on line '. $e->getLine(),
+                'data' => $r->all(),
+            ];
+        }
+
+        DB::commit();
+
+        if (isset($events[0]["type"]) && $events[0]["type"] == "error") {
+            return [
+                'type' => 'error',
+                'message' => "Failed to insert some events",
+                'data' => $events,
+            ];
+        }
+        return [
+            'type' => 'success',
+            'message' => "Events were created with success",
+            'data' => $events,
+        ];
+    }
     // @param integer $eventId
     // @param string  $result
     // @param integer $statusId

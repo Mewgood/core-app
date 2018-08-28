@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\ArchiveHome;
+use Illuminate\Support\Facades\DB;
 
 class Archive extends Controller
 {
@@ -27,12 +29,13 @@ class Archive extends Controller
             ];
 			
 		// before publishing , we need to make sure the order is correct ( for a given site, we want the VIP distributions to have higher order than the NON-VIP ones )
-		$distributions = \App\Distribution::whereIn('id', $ids)->orderBy('siteId','asc')->orderBy('isVip','desc')->get();
+		$distributions = \App\Distribution::whereIn('id', $ids)
+            ->orderBy('isVip','DESC')
+            ->get();
 		$sorted_ids = [];		
 		foreach($distributions as $distribution) {
 			$sorted_ids[] = $distribution->id;
 		}
-		
         foreach ($sorted_ids as $id) {
             $distribution = \App\Distribution::where('id', $id)->first();
 
@@ -127,8 +130,49 @@ class Archive extends Controller
 
             if ($distribution['publishTime'])
                 $distribution['publishDate'] = gmdate('Y-m-d H:i:s', $distribution['publishTime']);
+            
+            if ($distribution['isVip'] == 1) {
+                // get the order of the last inserted VIP event
+                // and link it to the current VIP 
+                $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', time($distribution["eventDate"])) . "'")
+                    ->where('siteId', $distribution['siteId'])
+                    ->where('tableIdentifier', $distribution['tableIdentifier'])
+                    ->where("isVip", "=", 1)
+                    ->orderBy("order", "ASC")
+                    ->first();
+                    
+                // if no VIP event is found
+                // get the last order of the normal events
+                if ($previousArchive == NULL) {
+                    $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', time($distribution["eventDate"])) . "'")
+                        ->where('siteId', $distribution['siteId'])
+                        ->where('tableIdentifier', $distribution['tableIdentifier'])
+                        ->where("isVip", "=", 0)
+                        ->orderBy("order", "DESC")
+                        ->first();
 
-			
+                    if ($previousArchive != NULL) {
+                        // shift the current list order by 1 index
+                        // to insert the new VIP event in the correct position
+                        ArchiveHome::where('order', ">", $previousArchive->order + 1)
+                            ->where('siteId', $distribution['siteId'])
+                            ->where('tableIdentifier', $distribution['tableIdentifier'])
+                            ->update(['order' => DB::raw("`order` + 1")]);
+                            
+                        $distribution["order"] = $previousArchive->order + 1;
+                    }
+                } else {
+                    // shift the current list order by 1 index
+                    // to insert the new VIP event in the correct position
+                    ArchiveHome::where('order', ">=", $previousArchive->order)
+                        ->where('siteId', $distribution['siteId'])
+                        ->where('tableIdentifier', $distribution['tableIdentifier'])
+                        ->update(['order' => DB::raw("`order` + 1")]);
+                        
+                    $distribution["order"] = $previousArchive->order;
+                }
+            }
+
             // insert event in archive home
             \App\ArchiveHome::create($distribution);
 

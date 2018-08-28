@@ -21,10 +21,7 @@ class ArchiveHome extends Controller
         $tableIdentifier = $r->input('tableIdentifier');
 
         // get events
-        $data['events'] = \App\ArchiveHome::select(
-                "*",
-                DB::raw("DATE(eventDate) AS eventDate")
-            )
+        $data['events'] = \App\ArchiveHome::select()
             ->where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
             ->orderBy('order', 'ASC')

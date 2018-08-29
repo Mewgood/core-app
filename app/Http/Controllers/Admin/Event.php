@@ -51,113 +51,111 @@ class Event extends Controller
     // @return array()
     public function createFromMatch(Request $r)
     {
-        $matchId = $r->input('matchId');
-        $predictionId = $r->input('predictionId');
-        $odd = $r->input('odd');
+        $events = $r->input('events');
+        $savedEvents = [];
 
-        if (!$predictionId || trim($predictionId) == '-') {
-            return [
-                'type' => 'error',
-                'message' => "Prediction can not be empty!",
-            ];
-        }
+        foreach ($events as $event) {
+            if (!$event["predictionId"] || trim($event["predictionId"]) == '-') {
+                return [
+                    'type' => 'error',
+                    'message' => "Prediction can not be empty!",
+                ];
+            }
 
-        if (!$odd || trim($odd) == '-') {
-            return [
-                'type' => 'error',
-                'message' => "Odd can not be empty!",
-            ];
-        }
+            if (!$event["odd"] || trim($event["odd"]) == '-') {
+                return [
+                    'type' => 'error',
+                    'message' => "Odd can not be empty!",
+                ];
+            }
 
-        $match = \App\Match::find($matchId)->toArray();
+            $match = \App\Match::find($event["matchId"]);
+            if (!$match) {
+                return [
+                    'type' => 'error',
+                    'message' => "Match with id: " . $event["matchId"]  . " not found!",
+                ];
+            }
+            $match = $match->toArray();
 
-        // check if event already exists with same prediciton
-		// we check only the date - not the time of the event
-		$checkDate = strtok($match['eventDate'],  ' ');
-        if (\App\Event::where('homeTeamId', $match['homeTeamId'])
-            ->where('awayTeamId', $match['awayTeamId'])
-            // ->where('eventDate', $match['eventDate'])
-            ->where('eventDate', 'like' , $checkDate . '%')
-            ->where('predictionId', $predictionId)
-            ->count())
-        {
-            return [
-                'type' => 'error',
-                'message' => "This events already exists with same prediction",
-            ];
-        }
+            // check if event already exists with same prediciton
+            // we check only the date - not the time of the event
+            $checkDate = strtok($match['eventDate'],  ' ');
+            if (\App\Event::where('homeTeamId', $match['homeTeamId'])
+                ->where('awayTeamId', $match['awayTeamId'])
+                ->where('eventDate', 'like' , $checkDate . '%')
+                ->where('predictionId', $event["predictionId"])
+                ->count())
+            {
+                return [
+                    'type' => 'error',
+                    'message' => "This events already exists with same prediction",
+                ];
+            }
 
-        if (!$match) {
-            return [
-                'type' => 'error',
-                'message' => "Match with id: $matchId not founded!",
-            ];
-        }
+            $match['predictionId'] = $event["predictionId"];
+            $match['odd'] = number_format((float) $event["odd"], 2, '.', '');
+            $match['source'] = 'feed';
+            $match['provider'] = 'event';
+            $match['matchId'] = $match['id'];
 
-        $match['predictionId'] = $predictionId;
-        $match['odd'] = number_format((float) $odd, 2, '.', '');
-        $match['source'] = 'feed';
-        $match['provider'] = 'event';
-        $match['matchId'] = $match['id'];
+            if ($match['result'] != '') {
+                $statusByScore = new \App\Src\Prediction\SetStatusByScore($match['result'], $match['predictionId']);
+                $statusByScore->evaluateStatus();
+                $statusId = $statusByScore->getStatus();
+                $match['statusId'] = $statusId;
+            }
 
-        if ($match['result'] != '') {
-            $statusByScore = new \App\Src\Prediction\SetStatusByScore($match['result'], $match['predictionId']);
-            $statusByScore->evaluateStatus();
-            $statusId = $statusByScore->getStatus();
-            $match['statusId'] = $statusId;
-        }
+            unset($match['id']);
+            
+            // get the aliases - added by GDM
+            $homeTeamAlias = \App\Models\Team\Alias::where('teamId', $match['homeTeamId'] )->first();
+            if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+                $match['homeTeam'] = $homeTeamAlias->alias;
+            }		
+            $awayTeamAlias = \App\Models\Team\Alias::where('teamId', $match['awayTeamId'] )->first();
+            if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+                $match['awayTeam'] = $awayTeamAlias->alias;
+            }		
+            $leagueAlias = \App\Models\League\Alias::where('leagueId', $match['leagueId'] )->first();
+            if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+                $match['league'] = $leagueAlias->alias;
+            }
+            
+            $countryAlias = \App\Models\Country\Alias::where('countryCode', $match['countryCode'] )->first();
+            if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+                $match['country'] = $countryAlias->alias;
+            }
+            $event = \App\Event::create($match);
+            $savedEvents[] = $event;
 
-        unset($match['id']);
-		
-		// get the aliases - added by GDM
-		$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $match['homeTeamId'] )->first();
-		if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
-			$match['homeTeam'] = $homeTeamAlias->alias;
-		}		
-		$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $match['awayTeamId'] )->first();
-		if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
-			$match['awayTeam'] = $awayTeamAlias->alias;
-		}		
-		$leagueAlias = \App\Models\League\Alias::where('leagueId', $match['leagueId'] )->first();
-		if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
-			$match['league'] = $leagueAlias->alias;
-		}
-		
-		$countryAlias = \App\Models\Country\Alias::where('countryCode', $match['countryCode'] )->first();
-		if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
-			$match['country'] = $countryAlias->alias;
-		}
-		
-		
+            $existingOdd = \App\Models\Events\Odd::where('matchId', $event["matchId"])
+                ->where('leagueId', $match['leagueId'])
+                ->where('predictionId', $event["predictionId"])
+                ->first();
 
-        $event = \App\Event::create($match);
+            if (! $existingOdd) {
+                \App\Models\Events\Odd::create([
+                    'matchId' => $event["matchId"],
+                    'leagueId' => $match['leagueId'],
+                    'predictionId' => $event["predictionId"],
+                    'odd' => $event["odd"],
+                ]);
+            } else {
+                // odd already exists , check if it is the same
+                if ($existingOdd->odd != $event["odd"]) {
 
-        $existingOdd = \App\Models\Events\Odd::where('matchId', $matchId)
-            ->where('leagueId', $match['leagueId'])
-            ->where('predictionId', $predictionId)
-            ->first();
-
-        if (! $existingOdd) {
-            \App\Models\Events\Odd::create([
-                'matchId' => $matchId,
-                'leagueId' => $match['leagueId'],
-                'predictionId' => $predictionId,
-                'odd' => $odd,
-            ]);
-        } else {
-            // odd already exists , check if it is the same
-            if ($existingOdd->odd != $odd) {
-
-                // update odd
-                $existingOdd->odd = $odd;
-                $existingOdd->save();
+                    // update odd
+                    $existingOdd->odd = $event["odd"];
+                    $existingOdd->save();
+                }
             }
         }
 
         return [
             'type' => 'success',
             'message' => "Event was creeated with success",
-            'data' => $event,
+            'data' => $savedEvents,
         ];
     }
 

@@ -30,7 +30,8 @@ class Archive extends Controller
 			
 		// before publishing , we need to make sure the order is correct ( for a given site, we want the VIP distributions to have higher order than the NON-VIP ones )
 		$distributions = \App\Distribution::whereIn('id', $ids)
-            ->orderBy('isVip','DESC')
+            ->orderBy('eventDate','ASC')
+            ->orderBy('isVip', 'DESC')
             ->get();
 		$sorted_ids = [];		
 		foreach($distributions as $distribution) {
@@ -134,7 +135,7 @@ class Archive extends Controller
             if ($distribution['isVip'] == 1) {
                 // get the order of the last inserted VIP event
                 // and link it to the current VIP 
-                $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', time($distribution["eventDate"])) . "'")
+                $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', strtotime($distribution["eventDate"])) . "'")
                     ->where('siteId', $distribution['siteId'])
                     ->where('tableIdentifier', $distribution['tableIdentifier'])
                     ->where("isVip", "=", 1)
@@ -144,7 +145,7 @@ class Archive extends Controller
                 // if no VIP event is found
                 // get the last order of the normal events
                 if ($previousArchive == NULL) {
-                    $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', time($distribution["eventDate"])) . "'")
+                    $previousArchive = ArchiveHome::whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . gmdate('Y-m-d', strtotime($distribution["eventDate"])) . "'")
                         ->where('siteId', $distribution['siteId'])
                         ->where('tableIdentifier', $distribution['tableIdentifier'])
                         ->where("isVip", "=", 0)
@@ -158,8 +159,10 @@ class Archive extends Controller
                             ->where('siteId', $distribution['siteId'])
                             ->where('tableIdentifier', $distribution['tableIdentifier'])
                             ->update(['order' => DB::raw("`order` + 1")]);
-                            
+                        
                         $distribution["order"] = $previousArchive->order + 1;
+                    } else {
+                        $distribution["order"] = 0;
                     }
                 } else {
                     // shift the current list order by 1 index

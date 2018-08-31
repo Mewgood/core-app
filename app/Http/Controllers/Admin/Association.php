@@ -160,6 +160,7 @@ class Association extends Controller
                 'tipsPerDay' => $p->tipsPerDay,
                 'eventIsAssociated' => $distributionExists,
                 'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate,
+                'tipsDifference' => $p->tipsPerDay - $eventsExistsOnSystemDate
             ];
         }
         return $data;

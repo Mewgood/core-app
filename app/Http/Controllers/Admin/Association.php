@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AssociationModel;
 use Illuminate\Http\Request;
 
 class Association extends Controller
@@ -266,18 +267,27 @@ class Association extends Controller
         $table = $r->input('table');
         $systemDate = $r->input('systemDate');
 
-        foreach ($table as $item) {
-            // check if already exists no tip in selected date
-            if (\App\Association::where('type', $item["table"])
-                ->where('isNoTip', '1')
-                ->where('systemDate', $systemDate)->count())
-            {
-                return response()->json([
-                    "type" => "error",
-                    "message" => "Already exists no tip table in selected date",
-                ]);
-            }
+        $errors = [];
+        $isErrored = false;
 
+        foreach ($table as $item) {
+            $validMessage = AssociationModel::validate($item, $systemDate);
+            if ($validMessage["type"] == "error") {
+                $isErrored = true;
+                $errors[] = $validMessage;
+            }
+            AssociationModel::validate($item, $systemDate);
+        }
+        
+        if ($isErrored) {
+            return [
+                'type' => 'error',
+                'message' => "Failed to insert",
+                'data' => $errors,
+            ];
+        }
+        
+        foreach ($table as $item) {
             $a = new \App\Association();
             $a->type = $item["table"];
             $a->isNoTip = '1';

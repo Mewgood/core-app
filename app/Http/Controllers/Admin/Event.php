@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Events\EventModel;
+use App\Match;
 
 class Event extends Controller
 {
@@ -52,46 +53,27 @@ class Event extends Controller
     public function createFromMatch(Request $r)
     {
         $events = $r->input('events');
-        $savedEvents = [];
+        $errors = [];
+        $isErrored = false;
+        
+        foreach ($events as $event) {
+            $validMessage = EventModel::validateAddFromMatch($event);
+            if ($validMessage["type"] == "error") {
+                $isErrored = true;
+                $errors[] = $validMessage;
+            }
+        }
+        if ($isErrored) {
+            return [
+                'type' => 'error',
+                'message' => "Failed to insert",
+                'data' => $errors
+            ];
+        }
 
         foreach ($events as $event) {
-            if (!$event["predictionId"] || trim($event["predictionId"]) == '-') {
-                return [
-                    'type' => 'error',
-                    'message' => "Prediction can not be empty!",
-                ];
-            }
-
-            if (!$event["odd"] || trim($event["odd"]) == '-') {
-                return [
-                    'type' => 'error',
-                    'message' => "Odd can not be empty!",
-                ];
-            }
-
-            $match = \App\Match::find($event["matchId"]);
-            if (!$match) {
-                return [
-                    'type' => 'error',
-                    'message' => "Match with id: " . $event["matchId"]  . " not found!",
-                ];
-            }
+            $match = Match::find($event["matchId"]);
             $match = $match->toArray();
-
-            // check if event already exists with same prediciton
-            // we check only the date - not the time of the event
-            $checkDate = strtok($match['eventDate'],  ' ');
-            if (\App\Event::where('homeTeamId', $match['homeTeamId'])
-                ->where('awayTeamId', $match['awayTeamId'])
-                ->where('eventDate', 'like' , $checkDate . '%')
-                ->where('predictionId', $event["predictionId"])
-                ->count())
-            {
-                return [
-                    'type' => 'error',
-                    'message' => "This events already exists with same prediction",
-                ];
-            }
 
             $match['predictionId'] = $event["predictionId"];
             $match['odd'] = number_format((float) $event["odd"], 2, '.', '');
@@ -153,9 +135,9 @@ class Event extends Controller
         }
 
         return [
-            'type' => 'success',
-            'message' => "Event was creeated with success",
             'data' => $savedEvents,
+            'type' => 'success',
+            'message' => "Events were created with success",
         ];
     }
 
@@ -321,6 +303,14 @@ class Event extends Controller
 
         try {
             $events = EventModel::bulkInsert($r->all()["events"]);
+            if (isset($events[0]["type"]) && $events[0]["type"] == "error") {
+                DB::rollback();
+                return [
+                    'type' => 'error',
+                    'message' => "Failed to insert some events",
+                    'data' => $events,
+                ];
+            }
         } catch(\Exception $e) {
             DB::rollback();
 
@@ -333,17 +323,10 @@ class Event extends Controller
 
         DB::commit();
 
-        if (isset($events[0]["type"]) && $events[0]["type"] == "error") {
-            return [
-                'type' => 'error',
-                'message' => "Failed to insert some events",
-                'data' => $events,
-            ];
-        }
         return [
-            'type' => 'success',
-            'message' => "Events were created with success",
             'data' => $events,
+            'type' => 'success',
+            'message' => "Events were created with success"
         ];
     }
     // @param integer $eventId

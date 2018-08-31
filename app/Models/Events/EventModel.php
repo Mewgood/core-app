@@ -3,12 +3,28 @@
 namespace App\Models\Events;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Match;
 
 class EventModel extends Model
 {
     public static function bulkInsert($data)
     {
+        $addedEvents = [];
         $errors = [];
+        $isErrored = false;
+
+        foreach ($data as $event) {
+            $validMessage = EventModel::validate($event);
+            if ($validMessage["type"] == "error") {
+                $isErrored = true;
+                $errors[] = $validMessage;
+            }
+        }
+        if ($isErrored) {
+            $errors[0]["type"] = "error";
+            return $errors;
+        }
+
         foreach ($data as $event) {
             $country = $event['country'];
             $league = $event['league'];
@@ -21,11 +37,6 @@ class EventModel extends Model
             $eventDate = $event['eventDate'];
             $predictionId = $event['predictionId'];
             $odd = $event['odd'];
-            
-            $validMessage = EventModel::validate($event);
-            if($validMessage !== true) {
-                $errors[] = $validMessage;
-            }
             
             // get the aliases - added by GDM
             $homeTeamAlias = \App\Models\Team\Alias::where('teamId', $homeTeamId)->first();
@@ -66,13 +77,9 @@ class EventModel extends Model
             $eventData['provider'] = 'manual';
             $eventData['matchId'] = 0;
             
-            $events[] = \App\Event::create($eventData);
+            $addedEvents[] = \App\Event::create($eventData);
         }
-
-        if (count($errors) > 0) {
-            return $errors;
-        }
-        return $events;
+        return $addedEvents;
     }
 
     public static function validate($event) {
@@ -144,6 +151,54 @@ class EventModel extends Model
                 'message' => "This event already exists with same prediction",
             ];
         }
-        return true;
+        return [
+            'data' => $event,
+            'type' => 'success',
+            'message' => "This event is correct",
+        ];
+    }
+    
+    public static function validateAddFromMatch($event) {
+        if (!$event["predictionId"] || trim($event["predictionId"]) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Prediction can not be empty!",
+            ];
+        }
+
+        if (!$event["odd"] || trim($event["odd"]) == '-') {
+            return [
+                'type' => 'error',
+                'message' => "Odd can not be empty!",
+            ];
+        }
+
+        $match = Match::find($event["matchId"]);
+        if (!$match) {
+            return [
+                'type' => 'error',
+                'message' => "Match with id: " . $event["matchId"]  . " not found!",
+            ];
+        }
+        
+        // check if event already exists with same prediciton
+        // we check only the date - not the time of the event
+        $checkDate = strtok($match['eventDate'],  ' ');
+        if (\App\Event::where('homeTeamId', $match['homeTeamId'])
+            ->where('awayTeamId', $match['awayTeamId'])
+            ->where('eventDate', 'like' , $checkDate . '%')
+            ->where('predictionId', $event["predictionId"])
+            ->count())
+        {
+            return [
+                'type' => 'error',
+                'message' => "This event already exists with same prediction",
+            ];
+        }
+        return [
+            'data' => $event,
+            'type' => 'success',
+            'message' => "This event is correct",
+        ];
     }
 }

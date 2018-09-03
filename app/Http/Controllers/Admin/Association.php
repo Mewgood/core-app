@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AssociationModel;
 use Illuminate\Http\Request;
 
 class Association extends Controller
@@ -247,11 +248,10 @@ class Association extends Controller
     // @return array()
     public function store(Request $r)
     {
-        $eventsIds = $r->input('eventsIds');
-        $table = $r->input('table');
+        $events = $r->input('events');
         $systemDate = $r->input('systemDate');
 
-        if (empty($eventsIds))
+        if (empty($events))
             return response()->json([
                 "type" => "error",
                 "message" => "You must select at least one event"
@@ -259,26 +259,25 @@ class Association extends Controller
 
         // TODO check $systemDate is a vlid date
 
-        $vip = ($table === 'ruv' || $table === 'nuv') ? '1' : '';
-
         $notFound = 0;
         $alreadyExists = 0;
         $success = 0;
         $returnMessage = '';
 
-        foreach ($eventsIds as $id) {
-
-            if (!\App\Event::find($id)) {
+        foreach ($events as $item) {
+            $vip = ($item["table"] === 'ruv' || $item["table"] === 'nuv') ? '1' : '';
+        
+            if (!\App\Event::find($item["id"])) {
                 $notFound++;
                 continue;
             }
 
-            $event = \App\Event::find($id)->toArray();
+            $event = \App\Event::find($item["id"])->toArray();
 
             // Check if already exists in association table
             if (\App\Association::where([
-                ['eventId', '=', (int)$id],
-                ['type', '=', $table],
+                ['eventId', '=', (int)$item["id"]],
+                ['type', '=', $item["table"]],
                 ['predictionId', '=', $event['predictionId']],
             ])->count()) {
                 $alreadyExists++;
@@ -292,7 +291,7 @@ class Association extends Controller
 
             $event['isNoTip'] = '';
             $event['isVip'] = $vip;
-            $event['type'] = $table;
+            $event['type'] = $item["table"];
             $event['systemDate'] = $systemDate;
 			
 			// get the aliases - added by GDM
@@ -343,31 +342,42 @@ class Association extends Controller
         $table = $r->input('table');
         $systemDate = $r->input('systemDate');
 
-        // check if already exists no tip in selected date
-        if (\App\Association::where('type', $table)
-            ->where('isNoTip', '1')
-            ->where('systemDate', $systemDate)->count())
-        {
+        $errors = [];
+        $isErrored = false;
+
+        foreach ($table as $item) {
+            $validMessage = AssociationModel::validate($item, $systemDate);
+            if ($validMessage["type"] == "error") {
+                $isErrored = true;
+                $errors[] = $validMessage;
+            }
+            AssociationModel::validate($item, $systemDate);
+        }
+        
+        if ($isErrored) {
+            return [
+                'type' => 'error',
+                'message' => "Failed to insert",
+                'data' => $errors,
+            ];
+        }
+        
+        foreach ($table as $item) {
+            $a = new \App\Association();
+            $a->type = $item["table"];
+            $a->isNoTip = '1';
+
+            if ($item["table"] === 'ruv' || $item["table"] === 'nuv')
+                $a->isVip = '1';
+
+            $a->systemDate = $systemDate;
+            $a->save();
+
             return response()->json([
-                "type" => "error",
-                "message" => "Already exists no tip table in selected date",
+                "type" => "success",
+                "message" => "No Tip was added with success!",
             ]);
         }
-
-        $a = new \App\Association();
-        $a->type = $table;
-        $a->isNoTip = '1';
-
-        if ($table === 'ruv' || $table === 'nuv')
-            $a->isVip = '1';
-
-        $a->systemDate = $systemDate;
-        $a->save();
-
-        return response()->json([
-            "type" => "success",
-            "message" => "No Tip was added with success!",
-        ]);
     }
 
     public function update() {}

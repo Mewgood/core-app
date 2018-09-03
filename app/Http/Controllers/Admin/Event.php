@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Models\Events\EventModel;
+use App\Match;
 
 class Event extends Controller
 {
@@ -49,113 +52,92 @@ class Event extends Controller
     // @return array()
     public function createFromMatch(Request $r)
     {
-        $matchId = $r->input('matchId');
-        $predictionId = $r->input('predictionId');
-        $odd = $r->input('odd');
-
-        if (!$predictionId || trim($predictionId) == '-') {
+        $events = $r->input('events');
+        $errors = [];
+        $isErrored = false;
+        
+        foreach ($events as $event) {
+            $validMessage = EventModel::validateAddFromMatch($event);
+            if ($validMessage["type"] == "error") {
+                $isErrored = true;
+                $errors[] = $validMessage;
+            }
+        }
+        if ($isErrored) {
             return [
                 'type' => 'error',
-                'message' => "Prediction can not be empty!",
+                'message' => "Failed to insert",
+                'data' => $errors
             ];
         }
 
-        if (!$odd || trim($odd) == '-') {
-            return [
-                'type' => 'error',
-                'message' => "Odd can not be empty!",
-            ];
-        }
+        foreach ($events as $event) {
+            $match = Match::find($event["matchId"]);
+            $match = $match->toArray();
 
-        $match = \App\Match::find($matchId)->toArray();
+            $match['predictionId'] = $event["predictionId"];
+            $match['odd'] = number_format((float) $event["odd"], 2, '.', '');
+            $match['source'] = 'feed';
+            $match['provider'] = 'event';
+            $match['matchId'] = $match['id'];
 
-        // check if event already exists with same prediciton
-		// we check only the date - not the time of the event
-		$checkDate = strtok($match['eventDate'],  ' ');
-        if (\App\Event::where('homeTeamId', $match['homeTeamId'])
-            ->where('awayTeamId', $match['awayTeamId'])
-            // ->where('eventDate', $match['eventDate'])
-            ->where('eventDate', 'like' , $checkDate . '%')
-            ->where('predictionId', $predictionId)
-            ->count())
-        {
-            return [
-                'type' => 'error',
-                'message' => "This events already exists with same prediction",
-            ];
-        }
+            if ($match['result'] != '') {
+                $statusByScore = new \App\Src\Prediction\SetStatusByScore($match['result'], $match['predictionId']);
+                $statusByScore->evaluateStatus();
+                $statusId = $statusByScore->getStatus();
+                $match['statusId'] = $statusId;
+            }
 
-        if (!$match) {
-            return [
-                'type' => 'error',
-                'message' => "Match with id: $matchId not founded!",
-            ];
-        }
+            unset($match['id']);
+            
+            // get the aliases - added by GDM
+            $homeTeamAlias = \App\Models\Team\Alias::where('teamId', $match['homeTeamId'] )->first();
+            if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
+                $match['homeTeam'] = $homeTeamAlias->alias;
+            }		
+            $awayTeamAlias = \App\Models\Team\Alias::where('teamId', $match['awayTeamId'] )->first();
+            if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
+                $match['awayTeam'] = $awayTeamAlias->alias;
+            }		
+            $leagueAlias = \App\Models\League\Alias::where('leagueId', $match['leagueId'] )->first();
+            if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
+                $match['league'] = $leagueAlias->alias;
+            }
+            
+            $countryAlias = \App\Models\Country\Alias::where('countryCode', $match['countryCode'] )->first();
+            if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
+                $match['country'] = $countryAlias->alias;
+            }
+            $event = \App\Event::create($match);
+            $savedEvents[] = $event;
 
-        $match['predictionId'] = $predictionId;
-        $match['odd'] = number_format((float) $odd, 2, '.', '');
-        $match['source'] = 'feed';
-        $match['provider'] = 'event';
-        $match['matchId'] = $match['id'];
+            $existingOdd = \App\Models\Events\Odd::where('matchId', $event["matchId"])
+                ->where('leagueId', $match['leagueId'])
+                ->where('predictionId', $event["predictionId"])
+                ->first();
 
-        if ($match['result'] != '') {
-            $statusByScore = new \App\Src\Prediction\SetStatusByScore($match['result'], $match['predictionId']);
-            $statusByScore->evaluateStatus();
-            $statusId = $statusByScore->getStatus();
-            $match['statusId'] = $statusId;
-        }
+            if (! $existingOdd) {
+                \App\Models\Events\Odd::create([
+                    'matchId' => $event["matchId"],
+                    'leagueId' => $match['leagueId'],
+                    'predictionId' => $event["predictionId"],
+                    'odd' => $event["odd"],
+                ]);
+            } else {
+                // odd already exists , check if it is the same
+                if ($existingOdd->odd != $event["odd"]) {
 
-        unset($match['id']);
-		
-		// get the aliases - added by GDM
-		$homeTeamAlias = \App\Models\Team\Alias::where('teamId', $match['homeTeamId'] )->first();
-		if( $homeTeamAlias && $homeTeamAlias->alias && $homeTeamAlias->alias != '' ) {
-			$match['homeTeam'] = $homeTeamAlias->alias;
-		}		
-		$awayTeamAlias = \App\Models\Team\Alias::where('teamId', $match['awayTeamId'] )->first();
-		if( $awayTeamAlias && $awayTeamAlias->alias && $awayTeamAlias->alias != '' ) {
-			$match['awayTeam'] = $awayTeamAlias->alias;
-		}		
-		$leagueAlias = \App\Models\League\Alias::where('leagueId', $match['leagueId'] )->first();
-		if( $leagueAlias && $leagueAlias->alias && $leagueAlias->alias != '' ) {
-			$match['league'] = $leagueAlias->alias;
-		}
-		
-		$countryAlias = \App\Models\Country\Alias::where('countryCode', $match['countryCode'] )->first();
-		if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
-			$match['country'] = $countryAlias->alias;
-		}
-		
-		
-
-        $event = \App\Event::create($match);
-
-        $existingOdd = \App\Models\Events\Odd::where('matchId', $matchId)
-            ->where('leagueId', $match['leagueId'])
-            ->where('predictionId', $predictionId)
-            ->first();
-
-        if (! $existingOdd) {
-            \App\Models\Events\Odd::create([
-                'matchId' => $matchId,
-                'leagueId' => $match['leagueId'],
-                'predictionId' => $predictionId,
-                'odd' => $odd,
-            ]);
-        } else {
-            // odd already exists , check if it is the same
-            if ($existingOdd->odd != $odd) {
-
-                // update odd
-                $existingOdd->odd = $odd;
-                $existingOdd->save();
+                    // update odd
+                    $existingOdd->odd = $event["odd"];
+                    $existingOdd->save();
+                }
             }
         }
 
         return [
+            'data' => $savedEvents,
             'type' => 'success',
-            'message' => "Event was creeated with success",
-            'data' => $event,
+            'message' => "Events were created with success",
         ];
     }
 
@@ -299,7 +281,54 @@ class Event extends Controller
         ];
 		
     }
-	
+    
+    // add event manually
+    // @param array $r Array containing a list of events
+    //      @param integer $country
+    //      @param integer $league
+    //      @param integer $homeTeam
+    //      @param integer $awayTeam
+    //      @param integer $homeTeamId
+    //      @param integer $awayTeamId
+    //      @param integer $leagueId
+    //      @param integer $countryCode
+    //      @param integer $eventDate
+    //      @param string  $predictionId
+    //      @param string  $odd
+    // @return array()
+    public function createManualBulk(Request $r)
+    {
+        $events = [];
+        DB::beginTransaction();
+
+        try {
+            $events = EventModel::bulkInsert($r->all()["events"]);
+            if (isset($events[0]["type"]) && $events[0]["type"] == "error") {
+                DB::rollback();
+                return [
+                    'type' => 'error',
+                    'message' => "Failed to insert some events",
+                    'data' => $events,
+                ];
+            }
+        } catch(\Exception $e) {
+            DB::rollback();
+
+            return [
+                'type' => 'error',
+                'message' => $e->getMessage() . "\n" . $e->getFile().' on line '. $e->getLine(),
+                'data' => $r->all(),
+            ];
+        }
+
+        DB::commit();
+
+        return [
+            'data' => $events,
+            'type' => 'success',
+            'message' => "Events were created with success"
+        ];
+    }
     // @param integer $eventId
     // @param string  $result
     // @param integer $statusId

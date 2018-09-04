@@ -160,7 +160,7 @@ class Archive extends Controller
                             ->where('tableIdentifier', $distribution['tableIdentifier'])
                             ->update(['order' => DB::raw("`order` + 1")]);
                         
-                        $distribution["order"] = $previousArchive->order + 1;
+                        $distribution["order"] = $previousArchive->order + 2;
                     } else {
                         $distribution["order"] = 0;
                     }

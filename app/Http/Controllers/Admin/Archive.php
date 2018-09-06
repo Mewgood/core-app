@@ -123,7 +123,7 @@ class Archive extends Controller
             $archiveHome = new \App\Http\Controllers\Admin\ArchiveHome();
 
             // increment order
-            $archiveHome->incrementOrder($distribution['siteId'], $distribution['tableIdentifier']);
+            //$archiveHome->incrementOrder($distribution['siteId'], $distribution['tableIdentifier']);
 
             // set isVisible for archive home
             $distribution['isVisible'] = 1;
@@ -155,14 +155,15 @@ class Archive extends Controller
                     if ($previousArchive != NULL) {
                         // shift the current list order by 1 index
                         // to insert the new VIP event in the correct position
-                        ArchiveHome::where('order', ">", $previousArchive->order + 1)
+                        ArchiveHome::where('order', ">", $previousArchive->order)
                             ->where('siteId', $distribution['siteId'])
                             ->where('tableIdentifier', $distribution['tableIdentifier'])
                             ->update(['order' => DB::raw("`order` + 1")]);
                         
-                        $distribution["order"] = $previousArchive->order + 2;
+                        $distribution["order"] = $previousArchive->order + 1;
                     } else {
                         $distribution["order"] = 0;
+                        $archiveHome->incrementOrder($distribution['siteId'], $distribution['tableIdentifier']);
                     }
                 } else {
                     // shift the current list order by 1 index
@@ -174,6 +175,8 @@ class Archive extends Controller
                         
                     $distribution["order"] = $previousArchive->order;
                 }
+            } else {
+                $archiveHome->incrementOrder($distribution['siteId'], $distribution['tableIdentifier']);
             }
 
             // insert event in archive home

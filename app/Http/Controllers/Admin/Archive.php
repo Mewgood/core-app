@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\ArchiveHome;
 use Illuminate\Support\Facades\DB;
+use App\Models\ArchiveModel;
 
 class Archive extends Controller
 {
@@ -21,6 +22,7 @@ class Archive extends Controller
         $inserted = 0;
         $notHaveResultOrStatus = 0;
         $sameTipNotPublished = 0;
+        $cmsSitesEvents = [];
 
         if (!$ids)
             return [
@@ -41,7 +43,6 @@ class Archive extends Controller
             $distribution = \App\Distribution::where('id', $id)->first();
 
             // TODO check if distributed event exists
-
             if ($distribution->isPublish) {
                 $alreadyPublish++;
                 continue;
@@ -178,6 +179,7 @@ class Archive extends Controller
 
             // insert event in archive home
             \App\ArchiveHome::create($distribution);
+            $cmsSitesEvents[] = $distribution;
 
             // delete in adition evetns
             $archiveHome->deleteInAdditionEvents($distribution['siteId'], $distribution['tableIdentifier']);
@@ -194,6 +196,8 @@ class Archive extends Controller
             $message .= "$notHaveResultOrStatus was NOT published becouse they not have result or status\r\n";
         if ($sameTipNotPublished)
             $message .= "$sameTipNotPublished was NOT inserted in archive becouse they are already published in other packages with same tip\r\n";
+
+        ArchiveModel::sendDataToCMSSites($cmsSitesEvents);
 
         return [
             "type" => "success",

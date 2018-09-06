@@ -25,5 +25,10 @@ class Site extends Model {
         'token',
     ];
 
-//    protected $hidden = [ ‘password’ ];
+    public static function getCMSSites() {
+        $data = Site::select("*")
+            ->where("type", "=", "cms")
+            ->get();
+        return $data;
+    }
 }

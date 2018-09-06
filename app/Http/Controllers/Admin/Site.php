@@ -39,6 +39,7 @@ class Site extends Controller
             "email" => $r->input('email'),
             "url" => $r->input('url'),
             "dateFormat" => $r->input('dateFormat'),
+            "type" => $r->input('type'),
             "smtpHost" => $r->input('smtpHost'),
             "smtpPort" => $r->input('smtpPort'),
             "smtpUser" => $r->input('smtpUser'),
@@ -84,6 +85,7 @@ class Site extends Controller
         $site->email = $r->input('email');
         $site->url = $r->input('url');
         $site->dateFormat = $r->input('dateFormat');
+        $site->type = $r->input('type');
         $site->smtpHost = $r->input('smtpHost');
         $site->smtpPort = $r->input('smtpPort');
         $site->smtpUser = $r->input('smtpUser');
@@ -197,6 +199,7 @@ class Site extends Controller
             'key'        => $site->token,
             'name'       => $site->name,
             'url'        => $site->url,
+            'type'       => $site->type,
             'dateFormat' => $site->dateFormat,
             'imap'       => [
                 'host'       => $site->imapHost,

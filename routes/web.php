@@ -69,6 +69,10 @@ $app->get('/import-events', function () use ($app) {
 // @return array()
 $app->post('/admin/login', 'Admin\Login@index');
 
+$app->group(['prefix' => 'api'], function ($app) {
+    $app->get('/home-archive-configuration/{token}', 'Admin\ArchiveHomeConfigurationController@getSiteConfiguration');
+});
+
 $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
 	/* 

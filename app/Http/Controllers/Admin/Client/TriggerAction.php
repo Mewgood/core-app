@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Client;
 use App\Http\Controllers\Controller;
 use Iluminate\Http\Request;
 use Ixudra\Curl\Facades\Curl;
+use App\Models\ArchiveModel;
 
 class TriggerAction extends Controller
 {
@@ -58,16 +59,23 @@ class TriggerAction extends Controller
         $archiveBigInstance = new \App\Http\Controllers\Admin\ArchiveBig();
         $archive = base64_encode(json_encode($archiveBigInstance->getFullArchiveBig($id)));
 
-        $response = Curl::to($site->url)
-            ->withData([
-                'route'  => 'api',
-                'key'    => $site->token,
-                'method' => 'updateArchiveBig',
-                'data'   => $archive,
-            ])
-            ->post();
+        if (strtolower($site->type) == "cms") {
+            $archive = $archiveBigInstance->getFullArchiveBig($id);
+            $response = ArchiveModel::sendDataToCMSSites($archive, $site, "archiveBig");
+        } else {
+            $archive = base64_encode(json_encode($archiveBigInstance->getFullArchiveBig($id)));
+            $response = Curl::to($site->url)
+                ->withData([
+                    'route'  => 'api',
+                    'key'    => $site->token,
+                    'method' => 'updateArchiveBig',
+                    'data'   => $archive,
+                ])
+                ->post();
+            $response = $this->decodeJSON($response);
+        }
 
-        $resp = $this->checkResponse($response);
+        $resp = $this->checkResponse($response, $site, "archiveBig");
 
         if ($resp['type'] == 'success') {
             \App\ArchivePublishStatus::where('siteId', $site->id)
@@ -91,9 +99,13 @@ class TriggerAction extends Controller
             ];
 
         $archiveHomeInstance = new \App\Http\Controllers\Admin\ArchiveHome();
-        $archive = base64_encode(json_encode($archiveHomeInstance->getFullArchiveHome($id)));
 
-        $response = Curl::to($site->url)
+        if (strtolower($site->type) == "cms") {
+            $archive = $archiveHomeInstance->getFullArchiveHome($id);
+            $response = ArchiveModel::sendDataToCMSSites($archive, $site, "archiveHome");
+        } else {
+            $archive = base64_encode(json_encode($archiveHomeInstance->getFullArchiveHome($id)));
+            $response = Curl::to($site->url)
             ->withData([
                 'route'   => 'api',
                 'key'     => $site->token,
@@ -101,8 +113,9 @@ class TriggerAction extends Controller
                 'data'    => $archive,
             ])
             ->post();
-
-        $resp = $this->checkResponse($response);
+            $response = $this->decodeJSON($response);
+        }
+        $resp = $this->checkResponse($response, $site, "archiveHome");
 
         if ($resp['type'] == 'success') {
             \App\ArchivePublishStatus::where('siteId', $site->id)
@@ -113,13 +126,14 @@ class TriggerAction extends Controller
         return $resp;
     }
 
-    private function checkResponse($response)
+    private function checkResponse($response, $site, $type)
     {
-        $response = $this->decodeJSON($response);
         if (!$response)
             return [
                 'type' => 'error',
                 'message' => 'Client site not respond, check Website Url and client site availability in browser.',
+                'site' => $site->url,
+                'archive' => $type
             ];
 
         return [

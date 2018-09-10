@@ -205,7 +205,7 @@ class ArchiveBig extends Controller
         foreach (\App\SitePrediction::where('siteId', $id)->get()->toArray() as $k => $v)
            $predictions[$v['predictionIdentifier']] = $v;
 
-        $events = \App\ArchiveBig::where('siteId', 2)
+        $events = \App\ArchiveBig::where('siteId', $id)
             ->where('isPublishInSite', '1')
             ->where('isVisible', '1')
             ->orderBy('isVip', 'ASC')

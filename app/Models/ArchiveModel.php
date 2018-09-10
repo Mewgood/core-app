@@ -3,23 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Match;
-use App\Site;
 use Iluminate\Http\Request;
 use Ixudra\Curl\Facades\Curl;
 
 class ArchiveModel extends Model
 {
-    public static function sendDataToCMSSites($data)
+    public static function sendDataToCMSSites($data, $site, $type)
     {
-        $cmsSites = Site::getCMSSites();
-        foreach($cmsSites as $cmsSite) {
-            $response = Curl::to($cmsSite->url . "admin/controller/api/betClient.php")
-                ->withData([
-                    'data'   => $data
-                ])
-                ->asJson()
-                ->post();
-        }
+        $data["type"] = $type;
+        $data["token"] = $site->token;
+
+        $response = Curl::to($site->url . "admin/controller/api/betClient.php")
+            ->withData([
+                'data'   => $data
+            ])
+            ->asJson()
+            ->post();
+        return json_decode(json_encode($response), true);
     }
 }

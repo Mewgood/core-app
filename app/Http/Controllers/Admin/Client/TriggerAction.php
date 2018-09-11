@@ -41,7 +41,7 @@ class TriggerAction extends Controller
             $site->save();
         }
 
-        return $this->checkResponse(json_encode($response));
+        return $this->checkResponse($response, $site, "siteConfiguration");
     }
 
     // send client (site) his archive big for store.
@@ -74,7 +74,6 @@ class TriggerAction extends Controller
                 ->post();
             $response = $this->decodeJSON($response);
         }
-
         $resp = $this->checkResponse($response, $site, "archiveBig");
 
         if ($resp['type'] == 'success') {

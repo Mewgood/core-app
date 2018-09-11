@@ -206,9 +206,12 @@ class ArchiveBig extends Controller
            $predictions[$v['predictionIdentifier']] = $v;
 
         $events = \App\ArchiveBig::where('siteId', $id)
-            ->where('isPublishInSite', '1')
-            ->where('isVisible', '1')
-            ->orderBy('isVip', 'ASC')
+            ->where('isPublishInSite', '1');
+            
+        if ($site->type != "cms") {
+            $events = $events->where('isVisible', '1');
+        }
+        $events = $events->orderBy('isVip', 'ASC')
             ->orderBy('eventDate', 'DESC')
             ->get()
             ->toArray();

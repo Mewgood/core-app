@@ -26,10 +26,12 @@ class PublishArchives extends CronCommand
 
         foreach ($archives as $archive) {
 
-            if ($archive->type == 'archiveHome')
+            if ($archive->type == 'archiveHome') {
                 $wasPublish = $actionInstance->updateArchiveHome($archive->siteId);
-            else
+            }
+            else {
                 $wasPublish = $actionInstance->updateArchiveBig($archive->siteId);
+            }
 
             if ($wasPublish['type'] == 'success') {
                 $info['published']++;
@@ -44,7 +46,7 @@ class PublishArchives extends CronCommand
         $this->info(json_encode([
             "data" => $data,
             "info" => $info, 
-            "message" => "Archive Home sent",
+            "message" => "Archive sent",
             "date" => gmdate('Y-m-d H:i:s')
         ]));
 

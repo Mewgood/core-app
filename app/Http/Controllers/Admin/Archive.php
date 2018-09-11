@@ -41,7 +41,6 @@ class Archive extends Controller
             $distribution = \App\Distribution::where('id', $id)->first();
 
             // TODO check if distributed event exists
-
             if ($distribution->isPublish) {
                 $alreadyPublish++;
                 continue;

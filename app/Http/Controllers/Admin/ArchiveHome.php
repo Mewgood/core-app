@@ -230,9 +230,12 @@ class ArchiveHome extends Controller
            $predictions[$v['predictionIdentifier']] = $v;
 
         $currentDate = gmdate('Y-m-d H:i:s');
-        $events = \App\ArchiveHome::where('siteId', $id)
-            ->where('isVisible', '1')
-            ->orderBy('order', 'ASC')
+        $events = \App\ArchiveHome::where('siteId', $id);
+        
+        if ($site->type != "cms") {
+            $events = $events->where('isVisible', '1');
+        }
+        $events = $events->orderBy('order', 'ASC')
             ->orderBy('isVip', 'ASC')
             ->orderBy('eventDate', 'DESC')
             ->get()

@@ -236,8 +236,8 @@ class ArchiveHome extends Controller
             $events = $events->where('isVisible', '1');
         }
         $events = $events->orderBy('order', 'ASC')
+            ->orderByRaw('DATE_FORMAT(eventDate, "%Y-%m-%d") DESC')
             ->orderBy('isVip', 'ASC')
-            ->orderBy('eventDate', 'DESC')
             ->get()
             ->toArray();
         $vipFlags = [];

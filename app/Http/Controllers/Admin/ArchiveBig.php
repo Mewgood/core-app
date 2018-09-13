@@ -211,8 +211,8 @@ class ArchiveBig extends Controller
         if ($site->type != "cms") {
             $events = $events->where('isVisible', '1');
         }
-        $events = $events->orderBy('isVip', 'ASC')
-            ->orderBy('eventDate', 'DESC')
+        $events = $events->orderByRaw('DATE_FORMAT(eventDate, "%Y-%m-%d") DESC')
+            ->orderBy('isVip', 'ASC')
             ->get()
             ->toArray();
 

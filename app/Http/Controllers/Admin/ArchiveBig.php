@@ -229,11 +229,12 @@ class ArchiveBig extends Controller
                 $e['predictionName'] = $predictions[$e['predictionId']]['name'];
             }
 
+            $package = \App\Package::find($e['packageId']);
             // vip flag
             if (!isset($vipFlags[$e['packageId']])) {
-                $package = \App\Package::find($e['packageId']);
                 $vipFlags[$e['packageId']] = $package->vipFlag;
             }
+            $e['packageIdentifier'] = $package->identifier;
             $e['vipFlag'] = $vipFlags[$e['packageId']];
 
             // change team name in prediction

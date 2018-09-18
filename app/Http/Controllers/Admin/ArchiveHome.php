@@ -261,11 +261,13 @@ class ArchiveHome extends Controller
             if (strpos($e['predictionName'], '{{team2}}') !== false)
                 $e['predictionName'] = str_replace('{{team2}}', $e['awayTeam'], $e['predictionName']);
 
+            $package = \App\Package::find($e['packageId']);
             // vip flag
             if (!isset($vipFlags[$e['packageId']])) {
                 $package = \App\Package::find($e['packageId']);
                 $vipFlags[$e['packageId']] = $package->vipFlag;
             }
+            $e['packageIdentifier'] = $package->identifier;
             $e['vipFlag'] = $vipFlags[$e['packageId']];
 
             $table = $e['tableIdentifier'];

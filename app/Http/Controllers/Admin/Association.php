@@ -73,15 +73,15 @@ class Association extends Controller
 
         // first get packagesIds acording to section
         $section = ($table === 'run' || $table === 'ruv') ? 'ru': 'nu';
+
         $packageSection = \App\PackageSection::select('packageId')
             ->where('section', $section)
             ->where('systemDate', $date)
             ->get();
-
+            
         $packagesIds = [];
         foreach ($packageSection as $p)
             $packagesIds[] = $p->packageId;
-
 
         // only vip or normal package according to table
         foreach ($packagesIds as $k => $id) {
@@ -188,7 +188,7 @@ class Association extends Controller
             }
         }
 
-        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip);
+        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section);
 
         if (!isset($data['sites'][0])) {
             $data['sites'][0] = [];
@@ -202,38 +202,36 @@ class Association extends Controller
         return $data;
     }
     
-    public static function getUnAvailablePackages($eligiblePackageIds, $association, $date, $isVip) {
+    public static function getUnAvailablePackages($eligiblePackageIds, $association, $date, $isVip, $section) {
         $data = [];
-        $keys = [];
-        $increments = 0;
 
         $ineligiblePackages = \App\Package::select(
                 "package.id",
+                "package.name",
                 "package.tipsPerDay",
                 "package.tipIdentifier",
                 "distribution.id AS distributionId",
-                "site.name AS siteName"
+                "site.name AS siteName",
+                "subscription.id AS subscriptionId"
             )
             ->join("site", "site.id", "package.siteId")
             ->join("package_prediction", "package_prediction.packageId", "package.id")
             ->leftJoin("distribution", "distribution.packageId", "package.id")
+            ->leftJoin("subscription", "subscription.packageId", "package.id")
             ->whereNotIn('package.id', $eligiblePackageIds)
             ->where("package.isVip", "=", $isVip)
-            ->when($association['event']->isNoTip, function () { // event is no tip -> exclude packages who have tip events
-                return $query->where('distribution.systemDate', $date)
+            ->when($association['event']->isNoTip, function ($query) { // event is no tip -> exclude packages who have tip events
+                return $query->where("distribution.systemDate", $date)
                     ->where("distribution.isNoTip", "=", 1);
+            })
+            ->when($section === "nu", function($query) {
+                return $query->whereNull("subscription.id");
             })
             ->where("package_prediction.predictionIdentifier", "!=", $association['event']->predictionId)
             ->groupBy("package.id")
             ->get();
 
         foreach ($ineligiblePackages as $p) {            
-            // create array
-            if (!array_key_exists($p->siteName, $keys)) {
-                $keys[$p->siteName] = $increments;
-                $increments++;
-            }
-
             // check if event alredy exists in tips distribution
             $distributionExists = \App\Distribution::where('associationId', $association['event']->id)
                 ->where('packageId', $p->id)

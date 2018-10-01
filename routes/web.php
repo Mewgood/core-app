@@ -1499,7 +1499,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             foreach ($group as $gids) {
                 $distributionInstance = new \App\Http\Controllers\Admin\Distribution();
                 // $result = $distributionInstance->associateEventsWithSubscription($gids);
-                $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids);
+                $result = $distributionInstance->associateEventsWithSubscriptionUpdated($gids, $template);
                 $message .= $result['message'];
             }
 

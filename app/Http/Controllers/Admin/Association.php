@@ -62,6 +62,7 @@ class Association extends Controller
         $data = [];
         $ineligiblePackageIds = [];
         $date = ($date === null) ? gmdate('Y-m-d') : $date;
+
         $data['event'] = \App\Association::find($associateEventId);
         $isVip = 0;
 
@@ -211,21 +212,19 @@ class Association extends Controller
                 "package.tipsPerDay",
                 "package.tipIdentifier",
                 "distribution.id AS distributionId",
-                "site.name AS siteName",
-                "subscription.id AS subscriptionId"
+                "site.name AS siteName"
             )
             ->join("site", "site.id", "package.siteId")
             ->join("package_prediction", "package_prediction.packageId", "package.id")
+            ->join("package_section", "package_section.packageId", "package.id")
             ->leftJoin("distribution", "distribution.packageId", "package.id")
-            ->leftJoin("subscription", "subscription.packageId", "package.id")
             ->whereNotIn('package.id', $eligiblePackageIds)
             ->where("package.isVip", "=", $isVip)
-            ->when($association['event']->isNoTip, function ($query) { // event is no tip -> exclude packages who have tip events
+            ->where("package_section.section" , "=", $section)
+            ->where("package_section.systemDate" , "=", $date)
+            ->when($association['event']->isNoTip, function ($query, $date) { // event is no tip -> exclude packages who have tip events
                 return $query->where("distribution.systemDate", $date)
                     ->where("distribution.isNoTip", "=", 1);
-            })
-            ->when($section === "nu", function($query) {
-                return $query->whereNull("subscription.id");
             })
             ->where("package_prediction.predictionIdentifier", "!=", $association['event']->predictionId)
             ->groupBy("package.id")

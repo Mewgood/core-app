@@ -42,6 +42,20 @@ class Leagues extends Controller
 		
 		return $leagues;
 	}
+    
+    /* Returns all leagues for a given country list */
+	public function getCountryListLeagues(Request $request) {
+        $leagues = \App\League::select( 
+                [ 'league.id' , 
+                \DB::raw( " if( `league_alias`.`alias` is not null , `league_alias`.`alias` , `league`.`name` ) as name ") ] 
+            )
+            ->join("league_country", "league_country.leagueId", "league.id")
+            ->leftJoin("league_alias", "league_alias.leagueId", "league.id")
+            ->whereIn('league_country.countryCode', $request->countryCodes)
+            ->get();
+        
+        return $leagues;
+    }
 	
 	/* Returns all teams from a given league - if provided , it will not return a given team */
 	public function getLeagueTeams( $league , $exclude = null ) {

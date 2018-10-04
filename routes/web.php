@@ -83,13 +83,14 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 	$app->get('/leagues/get-all-countries', 'Admin\Leagues@getAllCountries');
 	// Get all Leagues for a given country  
 	$app->get('/leagues/get-country-leagues/{countryCode}', 'Admin\Leagues@getCountryLeagues');
+    // Get all Leagues for a given country list
+	$app->post('/leagues/get-country-list-leagues', 'Admin\Leagues@getCountryListLeagues');
 	// Get all Teams for a given League  
 	$app->get('/leagues/get-league-teams/{league}', 'Admin\Leagues@getLeagueTeams');
 	// Get all Teams for a given League but exclude the given team
 	$app->get('/leagues/get-league-teams/{league}/{exclude}', 'Admin\Leagues@getLeagueTeams');
 	// Import Leagues / Teams from the feed
 	$app->get('/leagues/import-teams-from-feed', 'Admin\Leagues@importTeamsFeed');
-	
 
     /*
      * Country
@@ -526,6 +527,10 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         return $data;
     });
 
+    $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
+    $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
+    $app->delete('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
+    
     // auto-units
     // @param integer $siteId
     // @param string $tableIdentifier
@@ -1324,6 +1329,12 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param integer $id
     // @return object
     $app->get('/match/{id}', 'Admin\Match@get');
+    
+    // Get matches for a given league list and a date Y-m-d
+    // @param array $leagueIds
+    // @params string $date
+    // @return array
+    $app->post('/matches/get-league-list-matches', 'Admin\Match@getLeagueMatches');
 
     /*
      * Odd

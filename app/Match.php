@@ -20,5 +20,12 @@ class Match extends Model {
         'eventDate',
     ];
 
-//    protected $hidden = [ ‘password’ ];
+    public static function getLeagueMatches(array $leagueIds, string $date)
+    {
+        $matches = Match::whereIn("leagueId", $leagueIds)
+                    ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $date . "'")
+                    ->get()
+                    ->toArray();
+        return $matches;
+    }
 }

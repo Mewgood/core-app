@@ -78,6 +78,12 @@ class Match extends Controller
         return $events;
     }
 
+    public function getLeagueMatches(Request $request)
+    {
+        $matches = \App\Match::getLeagueMatches($request->leagueIds, $request->date);
+        return response($matches, 200);
+    }
+
     public function store() {}
 
     public function update() {}

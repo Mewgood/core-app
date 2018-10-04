@@ -30,6 +30,10 @@ class AutoUnitAddEvents extends CronCommand
             $this->allLeagues[] = $l->id;
         }
 
+        // TO DO: Implement admin pool search
+        // continue with the AutoUnitTodaySchedule logic
+        // only if the admin pool search did not return any values
+        
         // get all schedule for today
         $schedules = $this->getAutoUnitTodaySchedule();
 

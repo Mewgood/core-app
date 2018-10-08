@@ -1,6 +1,7 @@
 <?php namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Match extends Model {
 
@@ -20,10 +21,12 @@ class Match extends Model {
         'eventDate',
     ];
 
-    public static function getLeagueMatches(array $leagueIds, string $date)
+    public static function getLeagueMatches(array $leagueIds, string $date, int $limit, $offset)
     {
         $matches = Match::whereIn("leagueId", $leagueIds)
                     ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $date . "'")
+                    ->limit($limit)
+                    ->offset($offset)
                     ->get()
                     ->toArray();
         return $matches;

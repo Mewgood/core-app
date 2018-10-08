@@ -80,7 +80,8 @@ class Match extends Controller
 
     public function getLeagueMatches(Request $request)
     {
-        $matches = \App\Match::getLeagueMatches($request->leagueIds, $request->date);
+        $parsedLeagues = json_decode($request->leagueIds);
+        $matches = \App\Match::getLeagueMatches($parsedLeagues, $request->date, $request->length, $request->start);
         return response($matches, 200);
     }
 

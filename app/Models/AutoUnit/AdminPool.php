@@ -36,6 +36,7 @@ class AdminPool extends Model {
     {
         $matches = AdminPool::join("auto_unit_admin_pool_matches", "auto_unit_admin_pool_matches.pool_id", "auto_unit_admin_pools.id")
             ->join("match", "match.primaryId", "auto_unit_admin_pool_matches.match_id")
+            ->where("pool_date", "=", $date)
             ->get();
         return $matches;
     }

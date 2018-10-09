@@ -22,18 +22,20 @@ class AutoUnitAdminPool extends Controller
             AdminPoolMatch::updateOrCreate(["pool_id" => $match["pool_id"], "match_id" => $match["match_id"]], $match);
         }
         
-        return response()->json($matches, 200);
+        return response($matches, 200);
     }
     
-    public function get(string $date)
+    public function get(string $date, Request $request)
     {
-        $pool = AdminPool::getPoolMatches($date);
-        return response()->json($pool, 200);
+        $data = AdminPool::getPoolMatches($date, $request->limit, $request->offset, $request->search["value"]);
+        $pool["data"] = $data[0];
+        $pool["recordsFiltered"] = $pool["recordsTotal"] = $data[1]; // total_count
+        return response($pool, 200);
     }
     
     public function removeAdminPoolMatches(Request $request)
     {
-        $matches = AdminPoolMatch::destroy($request->ids);
-        return response()->json($matches, 200);
+        $matches = AdminPoolMatch::destroy($request->matches);
+        return response($matches, 200);
     }
 }

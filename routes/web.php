@@ -529,7 +529,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
     $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
     $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
-    $app->delete('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
+    $app->post('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
     
     // auto-units
     // @param integer $siteId

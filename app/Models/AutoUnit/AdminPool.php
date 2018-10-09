@@ -15,6 +15,20 @@ class AdminPool extends Model {
         'pool_date'
     ];
     
+    private static $searchableColumns = [
+        'primaryId',
+        'country',
+        'countryCode',
+        'league',
+        'leagueId',
+        'homeTeam',
+        'homeTeamId',
+        'awayTeam',
+        'awayTeamId',
+        'result',
+        'eventDate'
+    ];
+    
     protected $casts = [
         'pool_date' => 'date:Y-m-d',
     ];
@@ -32,13 +46,32 @@ class AdminPool extends Model {
         return $matches;
     }
     
-    public static function getPoolMatches(string $date)
+    public static function getPoolMatches(string $date, int $limit, int $offset, string $search)
     {
-        $matches = AdminPool::join("auto_unit_admin_pool_matches", "auto_unit_admin_pool_matches.pool_id", "auto_unit_admin_pools.id")
+        $matches = AdminPool::select(
+                DB::raw('SQL_CALC_FOUND_ROWS auto_unit_admin_pool_matches.id'),
+                "match.primaryId",
+                "match.league",
+                "match.homeTeam",
+                "match.awayTeam",
+                "match.result"
+            )
+            ->join("auto_unit_admin_pool_matches", "auto_unit_admin_pool_matches.pool_id", "auto_unit_admin_pools.id")
             ->join("match", "match.primaryId", "auto_unit_admin_pool_matches.match_id")
             ->where("pool_date", "=", $date)
+            ->where(function ($query) use ($date, $search) {
+                $query->when($search, function($innerQuery, $search) {
+                    foreach (self::$searchableColumns as $column) {
+                        $innerQuery->orWhere($column, "LIKE", "%$search%");
+                    }
+                    return $innerQuery;
+                });
+            })
+            ->limit($limit)
+            ->offset($offset)
             ->get();
-        return $matches;
+        $total = DB::select(DB::raw('SELECT FOUND_ROWS() as total_count'));
+        return [$matches, $total[0]->total_count];
     }
 }
 

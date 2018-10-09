@@ -81,8 +81,17 @@ class Match extends Controller
     public function getLeagueMatches(Request $request)
     {
         $parsedLeagues = json_decode($request->leagueIds);
-        $matches = \App\Match::getLeagueMatches($parsedLeagues, $request->date, $request->length, $request->start);
-        return response($matches, 200);
+        if ($parsedLeagues !== NULL) {
+            $matchModel = new \App\Match();
+            $data = $matchModel->getLeagueMatches($parsedLeagues, $request->date, $request->limit, $request->offset, $request->search["value"]);
+            $matches["data"] = $data[0];
+            $matches["recordsFiltered"] = $matches["recordsTotal"] = $data[1]; // total_count
+            return response($matches, 200);
+        } else {
+            $matches["data"] = [];
+            $matches["recordsFiltered"] = $matches["recordsTotal"] = 0; // total_count
+            return response($matches, 200);
+        }
     }
 
     public function store() {}

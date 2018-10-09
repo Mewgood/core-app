@@ -8,6 +8,7 @@ class Match extends Model {
     protected $table = 'match';
 
     protected $fillable = [
+        'primaryId',
         'id',
         'country',
         'countryCode',
@@ -21,14 +22,25 @@ class Match extends Model {
         'eventDate',
     ];
 
-    public static function getLeagueMatches(array $leagueIds, string $date, int $limit, $offset)
+    public function getLeagueMatches(array $leagueIds, string $date, int $limit, $offset, $search = NULL)
     {
-        $matches = Match::whereIn("leagueId", $leagueIds)
+        $matches = Match::select(
+                        DB::raw('SQL_CALC_FOUND_ROWS *')
+                    )
+                    ->whereIn("leagueId", $leagueIds)
                     ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $date . "'")
+                    ->where(function ($query) use ($date, $search) {
+                        $query->when($search, function($innerQuery, $search) {
+                            foreach ($this->fillable as $column) {
+                                $innerQuery->orWhere($column, "LIKE", "%$search%");
+                            }
+                            return $innerQuery;
+                        });
+                    })
                     ->limit($limit)
                     ->offset($offset)
-                    ->get()
-                    ->toArray();
-        return $matches;
+                    ->get();
+        $total = DB::select(DB::raw('SELECT FOUND_ROWS() as total_count'));
+        return [$matches, $total[0]->total_count];
     }
 }

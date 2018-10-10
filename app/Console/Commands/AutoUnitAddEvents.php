@@ -1,5 +1,7 @@
 <?php namespace App\Console\Commands;
 
+use App\Models\AutoUnit\AdminPool;
+
 class AutoUnitAddEvents extends CronCommand
 {
     protected $name = 'autounit:add-events';
@@ -7,6 +9,7 @@ class AutoUnitAddEvents extends CronCommand
 
     private $systemDate;
     private $todayFinishedEvents = [];
+    private $todayFinishedAdminPoolEvents = [];
 
     private $allLeagues = [];
     private $useAllLeagues = false;
@@ -18,6 +21,7 @@ class AutoUnitAddEvents extends CronCommand
     public function fire()
     {
         $cron = $this->startCron();
+
         $this->systemDate = gmdate('Y-m-d');
 
         $info = [
@@ -30,10 +34,6 @@ class AutoUnitAddEvents extends CronCommand
             $this->allLeagues[] = $l->id;
         }
 
-        // TO DO: Implement admin pool search
-        // continue with the AutoUnitTodaySchedule logic
-        // only if the admin pool search did not return any values
-        
         // get all schedule for today
         $schedules = $this->getAutoUnitTodaySchedule();
 
@@ -105,8 +105,26 @@ class AutoUnitAddEvents extends CronCommand
 
             // set prediction according to schedule
             $this->setPredictions($schedule);
+            
+            // the auto-unit first checks in the admin-pool list of events
+            // if it didn't find any event within that pool, that satisfies the site configuration for the auto-unit
+            // it will continue to search within the rest of the events inside the application
+            $event = $this->chooseEvent($schedule, $leagueArr, $this->todayFinishedAdminPoolEvents);
 
-            $event = $this->chooseEvent($schedule, $leagueArr);
+            if ($event == null) {
+                $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-admin-pool' . $schedule['tipIdentifier']);
+                if (! \App\Models\Log::where('identifier', $checksum)->where('status', 1)->count()) {
+                    $site = \App\Site::find($schedule['siteId']);
+                    \App\Models\Log::create([
+                        'type' => 'warning',
+                        'module' => 'autounit',
+                        'identifier' => $checksum,
+                        'status' => 1,
+                        'info' => json_encode(["Site: " . $site->name . " could not find any event in the admin pool for tip: " . $schedule['tipIdentifier']]),
+                    ]);
+                }
+                $event = $this->chooseEvent($schedule, $leagueArr, $this->todayFinishedEvents);
+            }
 
             if ($event == null) {
 
@@ -124,7 +142,7 @@ class AutoUnitAddEvents extends CronCommand
                 }
 
                 // try with all leagues
-                $event = $this->chooseEvent($schedule, $this->allLeagues);
+                $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayFinishedEvents);
             }
 
             if ($event == null) {
@@ -311,7 +329,7 @@ class AutoUnitAddEvents extends CronCommand
     // @param array $schedule
     // @param array $leagues leagueId => true
     // @return array()
-    private function chooseEvent(array $schedule, array $leagues)
+    private function chooseEvent(array $schedule, array $leagues, array $finishedEvents)
     {
         if (! count($leagues))
             return null;
@@ -320,14 +338,14 @@ class AutoUnitAddEvents extends CronCommand
         $leagueId = $leagues[$index];
 
         //  if league not have events today unset current index and reset keys
-        if (! array_key_exists($leagueId, $this->todayFinishedEvents))
-            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index));
+        if (! array_key_exists($leagueId, $finishedEvents))
+            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
 
-        $event = $this->getWinnerEvent($schedule, $this->todayFinishedEvents[$leagueId]);
+        $event = $this->getWinnerEvent($schedule, $finishedEvents[$leagueId]);
 
         //  if not found event unset current index and reset keys
         if ($event == null)
-            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index));
+            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
 
         return $event;
     }
@@ -445,9 +463,14 @@ class AutoUnitAddEvents extends CronCommand
             ->get()
             ->toArray();
 
-         foreach ($events as $event) {
-             $this->todayFinishedEvents[$event['leagueId']][] = $event;
-         }
+        $adminPoolEvents = AdminPool::getFinishedPoolMatches($this->systemDate);
+
+        foreach ($events as $event) {
+            $this->todayFinishedEvents[$event['leagueId']][] = $event;
+        }
+        foreach ($adminPoolEvents as $adminPoolEvent) {
+            $this->todayFinishedAdminPoolEvents[$adminPoolEvent["leagueId"]][] = $adminPoolEvent;
+        }
     }
 
     // get full schedule for today from autounit

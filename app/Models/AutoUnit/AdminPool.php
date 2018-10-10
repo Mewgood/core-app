@@ -73,6 +73,30 @@ class AdminPool extends Model {
         $total = DB::select(DB::raw('SELECT FOUND_ROWS() as total_count'));
         return [$matches, $total[0]->total_count];
     }
+    
+    public static function getFinishedPoolMatches(string $date)
+    {
+        $matches = AdminPool::select(
+                "match.id",
+                "match.primaryId",
+                "match.league",
+                "match.leagueId",
+                "match.homeTeam",
+                "match.homeTeamId",
+                "match.awayTeam",
+                "match.awayTeamId",
+                "match.result",
+                "match.countryCode",
+                "match.eventDate"
+            )
+            ->join("auto_unit_admin_pool_matches", "auto_unit_admin_pool_matches.pool_id", "auto_unit_admin_pools.id")
+            ->join("match", "match.primaryId", "auto_unit_admin_pool_matches.match_id")
+            ->where("pool_date", "=", $date)
+            ->where('match.result', '<>', '')
+            ->get()
+            ->toArray();
+        return $matches;
+    }
 }
 
 

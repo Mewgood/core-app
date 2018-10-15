@@ -1,6 +1,7 @@
 <?php namespace App\Console\Commands;
 
 use App\Models\AutoUnit\AdminPool;
+use Illuminate\Support\Facades\DB;
 
 class AutoUnitAddEvents extends CronCommand
 {
@@ -20,7 +21,7 @@ class AutoUnitAddEvents extends CronCommand
 
     public function fire()
     {
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
 
         $this->systemDate = gmdate('Y-m-d');
 
@@ -45,7 +46,7 @@ class AutoUnitAddEvents extends CronCommand
             $info['message'] = 'There is no finished events yet';
 
             $this->info(json_encode($info));
-            $this->stopCron($cron, $info);
+            //$this->stopCron($cron, $info);
             return true;
         }
 
@@ -184,10 +185,11 @@ class AutoUnitAddEvents extends CronCommand
                 ->get();
 
             $this->distributeEvent($event, $packages);
+            $this->incrementDistributedCounter($event);
         }
 
         $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        //$this->stopCron($cron, $info);
         return true;
     }
 
@@ -347,6 +349,18 @@ class AutoUnitAddEvents extends CronCommand
         if ($event == null)
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
 
+        // check if the match was already distributed in the site
+        // a site cannot have the same match distributed twice with different predictions
+        if ($this->isMatchDistributed($event, $schedule)) {
+            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
+        }
+        // check if the event was already distributed in a different site
+        // events that were not distributed at all
+        // or have a lower value than the MAX number of events distributed in a site
+        // have a higher priority
+        if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
+            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
+        }
         return $event;
     }
 
@@ -481,6 +495,51 @@ class AutoUnitAddEvents extends CronCommand
             ->where('status', '!=', 'success')
             ->get()
             ->toArray();
+    }
+    
+    private function isMatchDistributed(array $event, array $schedule) : bool
+    {
+        $distributed = \App\Distribution::where("homeTeamId", "=", $event["homeTeamId"])
+            ->where("awayTeamId", "=", $event["awayTeamId"])
+            ->where("eventDate", "=", $event["eventDate"])
+            ->where("siteId", "=", $schedule["siteId"])
+            ->exists();
+
+        if ($distributed) {
+            return true;
+        }
+        return false;
+    }
+    
+    private function isDistributedTooManyTimes(array $event, array $finishedEvents) : bool
+    {
+        $matchIds = [];
+
+        // map the match ids so we can limit the search
+        foreach ($finishedEvents as $key => $value) {
+            foreach ($value as $finishedEvent) {
+                $matchIds[] = $finishedEvent["primaryId"];
+            }
+        }
+        $match = \App\Match::select(
+                DB::raw("MAX(sites_distributed_counter) AS max"),
+                DB::raw("MIN(sites_distributed_counter) AS min")
+            )
+            ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $this->systemDate . "'")
+            ->whereIn("primaryId", $matchIds)
+            ->first();
+
+        if ($event["sites_distributed_counter"] < $match->max || $event["sites_distributed_counter"] == 0 || $match->max == $match->min) {
+            return false;
+        }
+        return true;
+    }
+    
+    private function incrementDistributedCounter(array $event) : void
+    {
+        $match = \App\Match::where("id", "=", $event["matchId"])->first();
+        $match->sites_distributed_counter += 1;
+        $match->save();
     }
 }
 

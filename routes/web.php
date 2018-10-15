@@ -542,7 +542,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $tableIdentifier = $r->input('tableIdentifier');
         $tipIdentifier = $r->input('tipIdentifier');
         $date = $r->input('date');
-        $leagues = $r->input('leagues');
+        $leagues = json_decode($r->input('leagues'));
 
         $configType = $r->input('configType');
         $minWinrate = $r->input('minWinrate');
@@ -716,7 +716,13 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $postp = 0;
 
         // get events for archive
-        $archiveEvents = \App\ArchiveBig::where('siteId', $siteId)
+        $archiveEvents = \App\ArchiveBig::select(
+                "archive_big.*",
+                "match.sites_distributed_counter"
+            )
+            ->where('siteId', $siteId)
+            ->join("event", "event.id", "archive_big.eventId")
+            ->join("match", "match.id", "event.matchId")
             ->where('tableIdentifier', $tableIdentifier)
             ->where('systemDate', '>=', $date . '-01')
             ->where('systemDate', '<=', $date . '-31')

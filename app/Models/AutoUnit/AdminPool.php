@@ -87,7 +87,8 @@ class AdminPool extends Model {
                 "match.awayTeamId",
                 "match.result",
                 "match.countryCode",
-                "match.eventDate"
+                "match.eventDate",
+                "match.sites_distributed_counter"
             )
             ->join("auto_unit_admin_pool_matches", "auto_unit_admin_pool_matches.pool_id", "auto_unit_admin_pools.id")
             ->join("match", "match.primaryId", "auto_unit_admin_pool_matches.match_id")

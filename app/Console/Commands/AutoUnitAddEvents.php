@@ -9,8 +9,8 @@ class AutoUnitAddEvents extends CronCommand
     protected $description = 'Add events according to autounit schedule.';
 
     private $systemDate;
-    private $todayFinishedEvents = [];
-    private $todayFinishedAdminPoolEvents = [];
+    private $todayEvents = [];
+    private $todayAdminPoolEvents = [];
 
     private $allLeagues = [];
     private $useAllLeagues = false;
@@ -39,9 +39,9 @@ class AutoUnitAddEvents extends CronCommand
         $schedules = $this->getAutoUnitTodaySchedule();
 
         // load today finished events
-        $this->setTodayFinishedEvents();
+        $this->setTodayEvents();
 
-        if (! count($this->todayFinishedEvents)) {
+        if (! count($this->todayEvents)) {
 
             $info['message'] = 'There is no finished events yet';
 
@@ -110,7 +110,7 @@ class AutoUnitAddEvents extends CronCommand
             // the auto-unit first checks in the admin-pool list of events
             // if it didn't find any event within that pool, that satisfies the site configuration for the auto-unit
             // it will continue to search within the rest of the events inside the application
-            $event = $this->chooseEvent($schedule, $leagueArr, $this->todayFinishedAdminPoolEvents);
+            $event = $this->chooseEvent($schedule, $leagueArr, $this->todayAdminPoolEvents);
 
             if ($event == null) {
                 $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-admin-pool' . $schedule['tipIdentifier']);
@@ -124,7 +124,7 @@ class AutoUnitAddEvents extends CronCommand
                         'info' => json_encode(["Site: " . $site->name . " could not find any event in the admin pool for tip: " . $schedule['tipIdentifier']]),
                     ]);
                 }
-                $event = $this->chooseEvent($schedule, $leagueArr, $this->todayFinishedEvents);
+                $event = $this->chooseEvent($schedule, $leagueArr, $this->todayEvents);
             }
 
             if ($event == null) {
@@ -143,7 +143,7 @@ class AutoUnitAddEvents extends CronCommand
                 }
 
                 // try with all leagues
-                $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayFinishedEvents);
+                $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayEvents);
             }
 
             if ($event == null) {
@@ -169,22 +169,30 @@ class AutoUnitAddEvents extends CronCommand
                 continue;
             }
 
-            \App\Models\Autounit\DailySchedule::find($schedule['id'])
-                ->update([
-                    'status' => 'success',
-                    'info'   => json_encode(['Event was added with success.']),
-                ]);
-
             $info['created']++;
 
-            $event = $this->getOrCreateEvent($event);
+            $eventModel = $this->getOrCreateEvent($event);
 
             // get all packages according to schedule
             $packages = \App\Package::where('siteId', $schedule['siteId'])
                 ->where('tipIdentifier', $schedule['tipIdentifier'])
                 ->get();
 
-            $this->distributeEvent($event, $packages);
+            if ($event["to_distribute"]) {
+                $this->distributeEvent($eventModel, $packages);
+
+                \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                ->update([
+                    'status' => 'success',
+                    'info'   => json_encode(['Eligible event.']),
+                ]);
+            } else {
+                \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                ->update([
+                    'status' => 'success',
+                    'info'   => json_encode(['Ineligible event.']),
+                ]);
+            }
             $this->incrementDistributedCounter($event);
         }
 
@@ -344,7 +352,7 @@ class AutoUnitAddEvents extends CronCommand
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
 
         $event = $this->getWinnerEvent($schedule, $finishedEvents[$leagueId]);
-
+ 
         //  if not found event unset current index and reset keys
         if ($event == null)
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
@@ -361,6 +369,14 @@ class AutoUnitAddEvents extends CronCommand
         if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
         }
+        
+        $scheduleModel = \App\Models\AutoUnit\DailySchedule::where("id", "=", $schedule["id"])
+            ->update([
+                "match_id" => $event["primaryId"],
+                "to_distribute" => $event["to_distribute"],
+                "odd_id" => $event["oddId"]
+            ]);
+        
         return $event;
     }
 
@@ -387,28 +403,28 @@ class AutoUnitAddEvents extends CronCommand
 
         // try to find correct status base on odd
         foreach ($odds as $odd) {
-
             $statusByScore = new \App\Src\Prediction\SetStatusByScore($event['result'], $odd['predictionId']);
             $statusByScore->evaluateStatus();
             $statusId = $statusByScore->getStatus();
 
-            if ($statusId < 1)
-                continue;
+            $event['matchId'] = $event['id'];
+            $event['source'] = 'feed';
+            $event['provider'] = 'autounit';
+            unset($event['id']);
+            unset($event['created_at']);
+            unset($event['updated_at']);
+            $event['odd'] = $odd['odd'];
+            $event['oddId'] = $odd['id'];
+            $event['predictionId'] = $odd['predictionId'];
+            $event['statusId'] = $statusId;
+            $event['systemDate'] = $this->systemDate;
 
             if ($statusId == $schedule['statusId']) {
-                $event['matchId'] = $event['id'];
-                $event['source'] = 'feed';
-                $event['provider'] = 'autounit';
-                unset($event['id']);
-                unset($event['primaryId']);
-                unset($event['created_at']);
-                unset($event['updated_at']);
-                $event['odd'] = $odd['odd'];
-                $event['predictionId'] = $odd['predictionId'];
-                $event['statusId'] = $statusId;
-                $event['systemDate'] = $this->systemDate;
-                return $event;
+                $event['to_distribute'] = true;
+            } else {
+                $event['to_distribute'] = false;
             }
+            return $event;
         }
 
         return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index));
@@ -468,22 +484,21 @@ class AutoUnitAddEvents extends CronCommand
         return count($arr) > 0 ? array_values($arr) : $arr;
     }
 
-    // set in $this->todayFinishedEvents all events finished today
+    // set in $this->todayEvents all events finished today
     // @return void
-    private function setTodayFinishedEvents()
+    private function setTodayEvents()
     {
          $events = \App\Match::where('eventDate', 'like', '%' . $this->systemDate . '%')
-            ->where('result', '<>', '')
             ->get()
             ->toArray();
 
-        $adminPoolEvents = AdminPool::getFinishedPoolMatches($this->systemDate);
+        $adminPoolEvents = AdminPool::getAutoUnitPoolMatches($this->systemDate);
 
         foreach ($events as $event) {
-            $this->todayFinishedEvents[$event['leagueId']][] = $event;
+            $this->todayEvents[$event['leagueId']][] = $event;
         }
         foreach ($adminPoolEvents as $adminPoolEvent) {
-            $this->todayFinishedAdminPoolEvents[$adminPoolEvent["leagueId"]][] = $adminPoolEvent;
+            $this->todayAdminPoolEvents[$adminPoolEvent["leagueId"]][] = $adminPoolEvent;
         }
     }
 

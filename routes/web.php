@@ -775,17 +775,19 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
         // get scheduled events
         $scheduledEvents = \App\Models\AutoUnit\DailySchedule::where('siteId', $siteId)
+            ->leftJoin("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
+            ->leftJoin("odd", "odd.id", "auto_unit_daily_schedule.odd_id")
             ->where('tableIdentifier', $tableIdentifier)
             ->where('date', $date)
             ->get()
             ->toArray();
 
         foreach ($scheduledEvents as $k => $v) {
-
-            $scheduledEvents[$k]['homeTeam'] = '?';
-            $scheduledEvents[$k]['awayTeam'] = '?';
-            $scheduledEvents[$k]['league']   = '?';
-            $scheduledEvents[$k]['odd']      = '?';
+            $scheduledEvents[$k]['homeTeam'] = $v["homeTeam"] ? $v["homeTeam"] : "?";
+            $scheduledEvents[$k]['awayTeam'] = $v["awayTeam"] ? $v["awayTeam"] : "?";
+            $scheduledEvents[$k]['league']   = $v["league"] ? $v["league"] : "?";
+            $scheduledEvents[$k]['odd']      = $v["odd"] ? $v["odd"] : "?";
+            $scheduledEvents[$k]['result']      = $v["result"] ? $v["result"] : "?";
 
             $scheduledEvents[$k]['isRealUser'] = false;
             $scheduledEvents[$k]['isNoUser']   = false;

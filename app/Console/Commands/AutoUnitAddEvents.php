@@ -19,11 +19,18 @@ class AutoUnitAddEvents extends CronCommand
 
     private $SiteAssocEvents = [];
 
-    public function fire()
+    public function fire($matchWithResult = null)
     {
         //$cron = $this->startCron();
 
-        $this->systemDate = gmdate('Y-m-d');
+        if ($matchWithResult !== null) {
+            $matchPredictionResults = json_decode($matchWithResult->prediction_results);
+            $this->systemDate = gmdate('Y-m-d', strtotime($matchWithResult->eventDate));
+            $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId);
+        } else {
+            $this->systemDate = gmdate('Y-m-d');
+            $schedules = $this->getAutoUnitTodaySchedule();
+        }
 
         $info = [
             'created' => 0,
@@ -34,9 +41,6 @@ class AutoUnitAddEvents extends CronCommand
         foreach (\App\League::all() as $l) {
             $this->allLeagues[] = $l->id;
         }
-
-        // get all schedule for today
-        $schedules = $this->getAutoUnitTodaySchedule();
 
         // load today finished events
         $this->setTodayEvents();
@@ -106,6 +110,53 @@ class AutoUnitAddEvents extends CronCommand
 
             // set prediction according to schedule
             $this->setPredictions($schedule);
+
+            // verify if the match that got result from the feed
+            // has the same statusId as the match in the auto-unit schedule
+            if ($matchWithResult !== null) {
+                foreach ($this->predictions as $prediction) {
+                    $found = array_search($prediction, array_column($matchPredictionResults, 'predictionName'));
+                    if ($found !== false) {
+                        $matchWithResult->statusId = $matchPredictionResults[$found]->value;
+                        break;
+                    }
+                }
+                if ($schedule["statusId"] != $matchWithResult->statusId) {                    
+                    $message = "Invalid match result for schedule<" . $schedule["id"] . "> | Initial match<" . $schedule["match_id"] . ">";
+                    echo $message . "\n";
+
+                    $this->incrementDistributedCounter($matchWithResult["id"], -1);
+                    $this->fire();
+                    return true;
+                } else {
+                    $event = [];
+                    $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
+
+                    $event["homeTeamId"] = $matchWithResult->homeTeamId;
+                    $event["awayTeamId"] = $matchWithResult->awayTeamId;
+                    $event["eventDate"] = $matchWithResult->eventDate;
+                    $event["predictionId"] = $odd->predictionId;
+
+                    $packages = \App\Package::where('siteId', $schedule['siteId'])
+                        ->where('tipIdentifier', $schedule['tipIdentifier'])
+                        ->get();
+                    $eventModel = $this->getOrCreateEvent($event);
+
+                    $this->distributeEvent($eventModel, $packages);
+                    
+                    $message = "Valid match result for schedule<" . $schedule["id"] . "> | Match<" . $schedule["match_id"] . ">";
+                    echo $message . "\n";
+
+                    \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                    ->update([
+                        'to_distribute' => true,
+                        'status' => 'success',
+                        'info'   => json_encode(['Eligible event.']),
+                    ]);
+                    return true;
+                }
+            }
+            
             
             // the auto-unit first checks in the admin-pool list of events
             // if it didn't find any event within that pool, that satisfies the site configuration for the auto-unit
@@ -180,23 +231,26 @@ class AutoUnitAddEvents extends CronCommand
 
             if ($event["to_distribute"]) {
                 $this->distributeEvent($eventModel, $packages);
-
+                echo "to_distribute_true\n";
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
+                    'to_distribute' => true,
                     'status' => 'success',
                     'info'   => json_encode(['Eligible event.']),
                 ]);
             } else {
+                echo "to_distribute_false\n";
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
-                    'status' => 'success',
+                    'status' => 'waiting',
                     'info'   => json_encode(['Ineligible event.']),
                 ]);
             }
-            $this->incrementDistributedCounter($event);
+            $this->incrementDistributedCounter($event["matchId"], 1);
         }
 
-        $this->info(json_encode($info));
+        echo json_encode($info);
+        //$this->info(json_encode($info));
         //$this->stopCron($cron, $info);
         return true;
     }
@@ -369,7 +423,7 @@ class AutoUnitAddEvents extends CronCommand
         if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
         }
-        
+        echo "Distribute: " . $event["to_distribute"] . "\n";
         $scheduleModel = \App\Models\AutoUnit\DailySchedule::where("id", "=", $schedule["id"])
             ->update([
                 "match_id" => $event["primaryId"],
@@ -407,17 +461,21 @@ class AutoUnitAddEvents extends CronCommand
             $statusByScore->evaluateStatus();
             $statusId = $statusByScore->getStatus();
 
-            $event['matchId'] = $event['id'];
-            $event['source'] = 'feed';
-            $event['provider'] = 'autounit';
-            unset($event['id']);
-            unset($event['created_at']);
-            unset($event['updated_at']);
-            $event['odd'] = $odd['odd'];
-            $event['oddId'] = $odd['id'];
-            $event['predictionId'] = $odd['predictionId'];
-            $event['statusId'] = $statusId;
-            $event['systemDate'] = $this->systemDate;
+            if ($statusId < 1 || ($statusId == $schedule['statusId']) ) {
+                $event['matchId'] = $event['id'];
+                $event['source'] = 'feed';
+                $event['provider'] = 'autounit';
+                unset($event['id']);
+                unset($event['created_at']);
+                unset($event['updated_at']);
+                $event['odd'] = $odd['odd'];
+                $event['oddId'] = $odd['id'];
+                $event['predictionId'] = $odd['predictionId'];
+                $event['statusId'] = $statusId;
+                $event['systemDate'] = $this->systemDate;
+            } else if ($statusId != $schedule['statusId']) {
+                continue;
+            }
 
             if ($statusId == $schedule['statusId']) {
                 $event['to_distribute'] = true;
@@ -512,6 +570,15 @@ class AutoUnitAddEvents extends CronCommand
             ->toArray();
     }
     
+    private function getAutoUnitFilteredSchedule($date, $matchId) : array
+    {
+        return \App\Models\AutoUnit\DailySchedule::where('systemDate', $date)
+            ->where('status', '=', 'waiting')
+            ->where('match_id', '=', $matchId)
+            ->get()
+            ->toArray();
+    }
+    
     private function isMatchDistributed(array $event, array $schedule) : bool
     {
         $distributed = \App\Distribution::where("homeTeamId", "=", $event["homeTeamId"])
@@ -550,10 +617,10 @@ class AutoUnitAddEvents extends CronCommand
         return true;
     }
     
-    private function incrementDistributedCounter(array $event) : void
+    private function incrementDistributedCounter(int $matchId , int $value) : void
     {
-        $match = \App\Match::where("id", "=", $event["matchId"])->first();
-        $match->sites_distributed_counter += 1;
+        $match = \App\Match::where("id", "=", $matchId)->first();
+        $match->sites_distributed_counter += $value;
         $match->save();
     }
 }

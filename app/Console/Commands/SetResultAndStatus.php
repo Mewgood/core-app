@@ -1,6 +1,7 @@
 <?php namespace App\Console\Commands;
 
 use Nathanmac\Utilities\Parser\Facades\Parser;
+use App\Console\Commands\AutoUnitAddEvents;
 
 // statuses for tipstersportal can be:
 //     canceled, postponed, pending, final
@@ -29,6 +30,7 @@ class SetResultAndStatus extends CronCommand
         foreach ($matches as $match) {
 
             $xml = file_get_contents(env('LINK_PORTAL_EVENT_RESULT') . '?tournament=' . $match->leagueId . '&match=' . $match->id);
+            
             if (!$xml) {
                 $info['message'] = "Can not parse xml for machId: " . $match->id . ", leagueId: " . $match->leagueId;
                 continue;
@@ -59,22 +61,35 @@ class SetResultAndStatus extends CronCommand
 
                 $events = \App\Event::where('matchId', $match->id)
                     ->where('leagueId', $match->leagueId)
+                    ->join("prediction", "prediction.identifier", "event.predictionId")
                     ->get();
 
-                foreach ($events as $event) {
+                $matchPredictionResults = [];
+                $i = 0;
 
+                foreach ($events as $event) {
                     $statusByScore = new \App\Src\Prediction\SetStatusByScore($score, $event->predictionId);
                     $statusByScore->evaluateStatus();
                     $statusId = $statusByScore->getStatus();
-
+                    
                     if ($statusId > 0) {
                         $eventInstance = new \App\Http\Controllers\Admin\Event();
                         $eventInstance->updateResultAndStatus($event->id, $score, $statusId);
+                        $matchPredictionResults[$i]["predictionName"] = $event->predictionId;
+                        $matchPredictionResults[$i]["value"] = $statusId;
+                        $i++;
                     }
                 }
 
                 $match->result = $score;
+                $match->prediction_results = json_encode($matchPredictionResults);
+
                 $match->update();
+                $autoUnitCron = new AutoUnitAddEvents();
+                $autoUnitCron->fire($match);
+                
+                // Check the auto-unit status
+                
 
                 $info['processed']++;
                 /* echo $score; */
@@ -82,7 +97,7 @@ class SetResultAndStatus extends CronCommand
         }
 
         $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        //$this->stopCron($cron, $info);
         return true;
     }
 }

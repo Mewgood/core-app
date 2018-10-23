@@ -21,7 +21,7 @@ class AutoUnitAddEvents extends CronCommand
 
     public function fire($matchWithResult = null)
     {
-        //$cron = $this->startCron();
+        $cron = $this->startCron();
 
         if ($matchWithResult !== null) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
@@ -50,7 +50,7 @@ class AutoUnitAddEvents extends CronCommand
             $info['message'] = 'There is no finished events yet';
 
             $this->info(json_encode($info));
-            //$this->stopCron($cron, $info);
+            $this->stopCron($cron, $info);
             return true;
         }
 
@@ -251,7 +251,7 @@ class AutoUnitAddEvents extends CronCommand
 
         echo json_encode($info);
         //$this->info(json_encode($info));
-        //$this->stopCron($cron, $info);
+        $this->stopCron($cron, $info);
         return true;
     }
 

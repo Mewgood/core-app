@@ -86,10 +86,7 @@ class SetResultAndStatus extends CronCommand
 
                 $match->update();
                 $autoUnitCron = new AutoUnitAddEvents();
-                $autoUnitCron->fire($match);
-                
-                // Check the auto-unit status
-                
+                $autoUnitCron->fire($match);                
 
                 $info['processed']++;
                 /* echo $score; */
@@ -97,7 +94,7 @@ class SetResultAndStatus extends CronCommand
         }
 
         $this->info(json_encode($info));
-        //$this->stopCron($cron, $info);
+        $this->stopCron($cron, $info);
         return true;
     }
 }

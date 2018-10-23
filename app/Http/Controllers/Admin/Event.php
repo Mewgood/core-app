@@ -24,10 +24,14 @@ class Event extends Controller
 
     // get all associated events
     // @return array()
-    public function getAssociatedEvents() {
-
+    public function getAssociatedEvents(string $date) {
         $eventsIds = [];
-        $ids = \App\Association::select('eventId')->distinct()->where('eventId', '!=', '0')->get();
+
+        $ids = \App\Association::select('eventId')
+            ->distinct()
+            ->where('eventId', '!=', '0')
+            ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $date . "'")
+            ->get();
 
         foreach ($ids as $id)
             $eventsIds[] = $id->eventId;

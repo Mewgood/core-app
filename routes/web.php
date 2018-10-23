@@ -1284,7 +1284,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // Events
     // get all associated events
     // @return array()
-    $app->get('/event/associated-events', 'Admin\Event@getAssociatedEvents');
+    $app->get('/event/associated-events/{date}', 'Admin\Event@getAssociatedEvents');
 
     // return distinct providers and leagues based on table selection
     $app->get('/event/available-filters-values/{table}', 'Admin\Event@getTablesFiltersValues');

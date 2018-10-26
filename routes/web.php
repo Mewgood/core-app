@@ -659,6 +659,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 ->delete();
 
             // create monthly schedule
+            $default->{"predictionO/U"} = $default->predictionOU; 
+            $default->{"predictionAH"} = $default->predictionAH;
+            $default->{"predictionG/G"} = $default->predictionGG;
             $scheduleInstance = new \App\Src\AutoUnit\Schedule($default);
             $scheduleInstance->createSchedule();
 
@@ -787,6 +790,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $scheduledEvents[$k]['awayTeam'] = $v["awayTeam"] ? $v["awayTeam"] : "?";
             $scheduledEvents[$k]['league']   = $v["league"] ? $v["league"] : "?";
             $scheduledEvents[$k]['odd']      = $v["odd"] ? $v["odd"] : "?";
+            $scheduledEvents[$k]['predictionGroup'] = $v["result"] ? $v["predictionId"] : $v["predictionGroup"];
             $scheduledEvents[$k]['result']      = $v["result"] ? $v["result"] : "?";
 
             $scheduledEvents[$k]['isRealUser'] = false;
@@ -795,7 +799,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
             $scheduledEvents[$k]['isPosted']    = false;
             $scheduledEvents[$k]['isScheduled'] = true;
-
+            
             // unset oldest scheduled events
             if ($minDate != null) {
                 if (strtotime($minDate) >= strtotime($v['systemDate'])) {

@@ -12,7 +12,7 @@ class SetResultAndStatus extends CronCommand
 
     public function fire()
     {
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
         $info = [
             'appEventNoResult' => 0,
             'processed'        => 0,
@@ -94,7 +94,7 @@ class SetResultAndStatus extends CronCommand
         }
 
         $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        //$this->stopCron($cron, $info);
         return true;
     }
 }

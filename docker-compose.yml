@@ -11,10 +11,10 @@ services:
       volumes:
         - .:/application
       environment:
-        - MYSQL_ROOT_PASSWORD=123456
+        - MYSQL_ROOT_PASSWORD=48chC6W9M2Mw70l
         - MYSQL_DATABASE=core_app
-        - MYSQL_USER=core_app
-        - MYSQL_PASSWORD=core_app
+        - MYSQL_USER=betclient
+        - MYSQL_PASSWORD=48chC6W9M2Mw70l
       ports:
         - "8083:3306"
 
@@ -44,8 +44,8 @@ services:
       ports:
         - "8181:80"
       environment:
-        MYSQL_USERNAME: root
-        MYSQL_ROOT_PASSWORD: 123456
+        MYSQL_USERNAME: betclient
+        MYSQL_ROOT_PASSWORD: 48chC6W9M2Mw70l
         PMA_HOST: core-app-mariadb
         PMA_PORT: 3306
 

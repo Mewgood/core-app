@@ -21,7 +21,7 @@ class AutoUnitAddEvents extends CronCommand
 
     public function fire($matchWithResult = null)
     {
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
 
         if ($matchWithResult !== null) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
@@ -121,7 +121,7 @@ class AutoUnitAddEvents extends CronCommand
                         break;
                     }
                 }
-                if ($schedule["statusId"] != $matchWithResult->statusId) {                    
+                if ($schedule["statusId"] != $matchWithResult->statusId) {
                     $message = "Invalid match result for schedule<" . $schedule["id"] . "> | Initial match<" . $schedule["match_id"] . ">";
                     echo $message . "\n";
 
@@ -221,7 +221,7 @@ class AutoUnitAddEvents extends CronCommand
             }
 
             $info['created']++;
-
+            
             $eventModel = $this->getOrCreateEvent($event);
 
             // get all packages according to schedule
@@ -231,7 +231,6 @@ class AutoUnitAddEvents extends CronCommand
 
             if ($event["to_distribute"]) {
                 $this->distributeEvent($eventModel, $packages);
-                echo "to_distribute_true\n";
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
                     'to_distribute' => true,
@@ -239,7 +238,6 @@ class AutoUnitAddEvents extends CronCommand
                     'info'   => json_encode(['Eligible event.']),
                 ]);
             } else {
-                echo "to_distribute_false\n";
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
                     'status' => 'waiting',
@@ -251,7 +249,7 @@ class AutoUnitAddEvents extends CronCommand
 
         echo json_encode($info);
         //$this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        //$this->stopCron($cron, $info);
         return true;
     }
 
@@ -402,11 +400,12 @@ class AutoUnitAddEvents extends CronCommand
         $leagueId = $leagues[$index];
 
         //  if league not have events today unset current index and reset keys
-        if (! array_key_exists($leagueId, $finishedEvents))
+        if (! array_key_exists((int)$leagueId, $finishedEvents)) {
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
+        }
 
         $event = $this->getWinnerEvent($schedule, $finishedEvents[$leagueId]);
- 
+        
         //  if not found event unset current index and reset keys
         if ($event == null)
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
@@ -423,7 +422,7 @@ class AutoUnitAddEvents extends CronCommand
         if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
         }
-        echo "Distribute: " . $event["to_distribute"] . "\n";
+
         $scheduleModel = \App\Models\AutoUnit\DailySchedule::where("id", "=", $schedule["id"])
             ->update([
                 "match_id" => $event["primaryId"],
@@ -513,7 +512,6 @@ class AutoUnitAddEvents extends CronCommand
         foreach ($predictions as $prediction) {
             $pred[] = $prediction['identifier'];
         }
-
         $this->predictions = $pred;
     }
 

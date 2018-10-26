@@ -25,7 +25,7 @@ Class Schedule
         $predictions = [
             '1x2',
             'ah',
-            'o/u',
+            'ou',
             'gg',
         ];
 
@@ -133,9 +133,9 @@ Class Schedule
     {
         $p = [
             '1x2' => 0,
-            'OU'  => 0,
+            'O/U'  => 0,
             'AH'  => 0,
-            'GG'  => 0,
+            'G/G'  => 0,
         ];
 
         $exit = false;
@@ -149,13 +149,13 @@ Class Schedule
             if ($_ah)
                 $p['AH']++;
 
-            $_ou = $this->incrementEventsNumber($p, 'OU');
+            $_ou = $this->incrementEventsNumber($p, 'O/U');
             if ($_ou)
-                $p['OU']++;
+                $p['O/U']++;
 
-            $_gg = $this->incrementEventsNumber($p, 'GG');
+            $_gg = $this->incrementEventsNumber($p, 'G/G');
             if ($_gg)
-                $p['GG']++;
+                $p['G/G']++;
 
             if ($_1x2 == false && $_ah == false && $_ou == false && $_gg == false)
                 $exit = true;
@@ -193,7 +193,7 @@ Class Schedule
             $statusId = ($rand < $wp) ? 1 : 2;
 
             // for draw
-            if ($predictionGroup == 'AH' || $predictionGroup == 'OU')
+            if ($predictionGroup == 'AH' || $predictionGroup == 'O/U')
                $statusId = rand(1,3);
 
             if ($statusId == 1) {
@@ -223,11 +223,16 @@ Class Schedule
 
     private function getRandomPrediction($p)
     {
-        $v = ['1x2', 'OU', 'AH', 'GG'];
+        $v = [
+            0 => '1x2',
+            1 => 'O/U',
+            2 => 'AH',
+            3 => 'G/G'
+        ];
 
         for ($i = 0; $i < 1000; $i++) {
 
-            $prediction = $v[rand(0,3)];
+            $prediction = $v[rand(0, 3)];
 
             if ($p[$prediction] > 0)
                 return $prediction;

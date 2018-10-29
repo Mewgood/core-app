@@ -95,6 +95,7 @@ class AdminPool extends Model {
             ->where("pool_date", "=", $date)
             ->get()
             ->toArray();
+
         return $matches;
     }
 }

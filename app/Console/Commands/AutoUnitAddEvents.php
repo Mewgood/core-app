@@ -221,7 +221,7 @@ class AutoUnitAddEvents extends CronCommand
             }
 
             $info['created']++;
-            
+
             $eventModel = $this->getOrCreateEvent($event);
 
             // get all packages according to schedule
@@ -391,7 +391,7 @@ class AutoUnitAddEvents extends CronCommand
     // @param array $schedule
     // @param array $leagues leagueId => true
     // @return array()
-    private function chooseEvent(array $schedule, array $leagues, array $finishedEvents)
+    private function chooseEvent(array $schedule, array $leagues, array &$finishedEvents)
     {
         if (! count($leagues))
             return null;
@@ -422,14 +422,15 @@ class AutoUnitAddEvents extends CronCommand
         if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
         }
-
+        
         $scheduleModel = \App\Models\AutoUnit\DailySchedule::where("id", "=", $schedule["id"])
             ->update([
                 "match_id" => $event["primaryId"],
                 "to_distribute" => $event["to_distribute"],
                 "odd_id" => $event["oddId"]
             ]);
-        
+
+        $finishedEvents[$leagueId][$event["index"]]["sites_distributed_counter"] += 1;
         return $event;
     }
 
@@ -481,6 +482,8 @@ class AutoUnitAddEvents extends CronCommand
             } else {
                 $event['to_distribute'] = false;
             }
+            // set the random event index from the list
+            $event["index"] = $index;
             return $event;
         }
 
@@ -579,9 +582,8 @@ class AutoUnitAddEvents extends CronCommand
     
     private function isMatchDistributed(array $event, array $schedule) : bool
     {
-        $distributed = \App\Distribution::where("homeTeamId", "=", $event["homeTeamId"])
-            ->where("awayTeamId", "=", $event["awayTeamId"])
-            ->where("eventDate", "=", $event["eventDate"])
+        $distributed = \App\Models\AutoUnit\DailySchedule::where("match_id", "=", $event["matchId"])
+            ->where("systemDate", "=", $event['systemDate'])
             ->where("siteId", "=", $schedule["siteId"])
             ->exists();
 
@@ -601,6 +603,7 @@ class AutoUnitAddEvents extends CronCommand
                 $matchIds[] = $finishedEvent["primaryId"];
             }
         }
+
         $match = \App\Match::select(
                 DB::raw("MAX(sites_distributed_counter) AS max"),
                 DB::raw("MIN(sites_distributed_counter) AS min")
@@ -609,7 +612,7 @@ class AutoUnitAddEvents extends CronCommand
             ->whereIn("primaryId", $matchIds)
             ->first();
 
-        if ($event["sites_distributed_counter"] < $match->max || $event["sites_distributed_counter"] == 0 || $match->max == $match->min) {
+        if ($event["sites_distributed_counter"] == $match->min) {
             return false;
         }
         return true;

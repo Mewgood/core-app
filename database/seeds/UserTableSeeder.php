@@ -16,20 +16,24 @@ class UserTableSeeder extends Seeder {
 
         // Add admins to aplication.
         User::firstOrCreate([
-            'name'       => 'David D',
-            'email'      => 'david@app.com',
+            'name'       => 'Admin One',
+            'email'      => 'admin1@app.com',
+            'password'   => sha1("84437088hx7vb1O")
         ]);
         User::firstOrCreate([
-            'name'       => 'Florin H',
-            'email'      => 'florin@app.com',
+            'name'       => 'Admin Two',
+            'email'      => 'admin2@app.com',
+            'password'   => sha1("6yXFGORMEptBtIt")
         ]);
         User::firstOrCreate([
-            'name'       => 'Cristi B',
-            'email'      => 'cristi@app.com',
+            'name'       => 'Cristian Bucur',
+            'email'      => 'cristian_bucur@app.com',
+            'password'   => sha1("bDUHHHYnG30z5gj")
         ]);
         User::firstOrCreate([
-            'name'       => 'Marius',
-            'email'      => 'marius@app.com',
+            'name'       => 'ITManiax',
+            'email'      => 'itmaniax@testing.com',
+            'password'   => sha1("8xE2T0L34n9ZcRr")
         ]);
     }
 }

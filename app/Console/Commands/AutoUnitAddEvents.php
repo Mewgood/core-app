@@ -122,9 +122,18 @@ class AutoUnitAddEvents extends CronCommand
                     }
                 }
                 if ($schedule["statusId"] != $matchWithResult->statusId) {
+                    $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
                     $message = "Invalid match result for schedule<" . $schedule["id"] . "> | Initial match<" . $schedule["match_id"] . ">";
                     echo $message . "\n";
 
+                    $invalidMatches = json_decode($schedule["invalid_matches"]);
+                    $invalidMatches[] = $matchWithResult->homeTeam . " - " . $matchWithResult->awayTeam . " - " . $matchWithResult->result  . " - " .$odd->predictionId;
+                    
+                    \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                    ->update([
+                        'invalid_matches' => json_encode($invalidMatches)
+                    ]);
+                    
                     $this->incrementDistributedCounter($matchWithResult["id"], -1);
                     $this->fire();
                     return true;

@@ -799,6 +799,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
             $scheduledEvents[$k]['isPosted']    = false;
             $scheduledEvents[$k]['isScheduled'] = true;
+            $scheduledEvents[$k]['invalidMatches'] = json_decode($v["invalid_matches"]);
             
             // unset oldest scheduled events
             if ($minDate != null) {

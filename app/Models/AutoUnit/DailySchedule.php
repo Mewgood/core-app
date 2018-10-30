@@ -16,6 +16,10 @@ class DailySchedule extends Model {
         'status',
         'info',
         'systemDate',
+        'invalid_matches',
+        'match_id',
+        'odd_id',
+        'to_distribute'
     ];
 
 //    protected $hidden = [ ‘password’ ];

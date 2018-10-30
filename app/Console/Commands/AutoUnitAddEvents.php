@@ -133,7 +133,7 @@ class AutoUnitAddEvents extends CronCommand
                     ->update([
                         'invalid_matches' => json_encode($invalidMatches)
                     ]);
-                    
+
                     $this->incrementDistributedCounter($matchWithResult["id"], -1);
                     $this->fire();
                     return true;

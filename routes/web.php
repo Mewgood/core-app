@@ -721,19 +721,25 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         // get events for archive
         $archiveEvents = \App\ArchiveBig::select(
                 "archive_big.*",
-                "match.sites_distributed_counter"
+                "match.sites_distributed_counter",
+                "auto_unit_daily_schedule.invalid_matches",
+                "auto_unit_daily_schedule.status",
+                "auto_unit_daily_schedule.info"
             )
-            ->where('siteId', $siteId)
+            ->where('archive_big.siteId', $siteId)
             ->join("event", "event.id", "archive_big.eventId")
             ->join("match", "match.id", "event.matchId")
-            ->where('tableIdentifier', $tableIdentifier)
-            ->where('systemDate', '>=', $date . '-01')
-            ->where('systemDate', '<=', $date . '-31')
+            ->join("auto_unit_daily_schedule", function($join) {
+                $join->on("auto_unit_daily_schedule.match_id", "=", "match.primaryId")
+                    ->on("auto_unit_daily_schedule.siteId", "=", "archive_big.siteId");
+            })
+            ->where('archive_big.tableIdentifier', $tableIdentifier)
+            ->where('archive_big.systemDate', '>=', $date . '-01')
+            ->where('archive_big.systemDate', '<=', $date . '-31')
             ->get()
             ->toArray();
 
         foreach ($archiveEvents as $k => $v) {
-
             $archiveEvents[$k]['isRealUser'] = false;
             $archiveEvents[$k]['isNoUser']   = true;
             $archiveEvents[$k]['isAutoUnit'] = false;
@@ -754,6 +760,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             // we must move the flag for table type fron association to archive
             $archiveEvents[$k]['isPosted']    = true;
             $archiveEvents[$k]['isScheduled'] = false;
+            $archiveEvents[$k]['invalidMatches'] = json_decode($v["invalid_matches"]);
+            $archiveEvents[$k]['status'] = $v["status"];
+            $archiveEvents[$k]['info'] = $v["info"];
 
             if ($v['statusId'] == 1)
                 $win++;

@@ -340,91 +340,71 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $date = $r->input('date');
 
         // get distinct tip for database
-        $tips = \App\Package::distinct()
+        $packages = \App\Package::distinct()
             ->where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
-            ->get(['tipIdentifier']);
+            ->get();
 
 
         // get configuration for each tip
         $data = [];
         $scheduleType = 'default';
-        foreach ($tips as $key => $tip) {
-            $tipIdentifier = $tip->tipIdentifier;
 
+        foreach ($packages as $key => $package) {
             $isDefaultConf = false;
-
-            // get package
-            $package = \App\Package::where('siteId', $siteId)
-                ->where('tipIdentifier', $tipIdentifier)
-                ->first();
-
-            // get all leagues from aplication
-            $leagues = \App\League::all();
-
-            $country = [];
-            foreach (\App\Country::all()->toArray() as $c)
-                $country[$c['code']] = $c['name'];
-
-            $leagueCountry = [];
-            foreach (\App\Models\League\Country::all()->toArray() as $lc)
-                $leagueCountry[$lc['leagueId']] = $lc['countryCode'];
-
-            foreach ($leagues as $l) {
-                if (array_key_exists($l->id, $leagueCountry)) {
-                    $code = $leagueCountry[$l->id];
-                    if (array_key_exists($code, $country))
-                        $l->name = $country[$code] . ': ' . $l->name;
-                }
-            }
 
             if ($date == 'default') {
                 $schedule = \App\Models\AutoUnit\DefaultSetting::where('siteId', $siteId)
-                    ->where('tipIdentifier', $tipIdentifier)
+                    ->where('tipIdentifier', $package->tipIdentifier)
                     ->first();
 
-                $associatedLeagues = \App\Models\AutoUnit\League::where('siteId', $siteId)
-                    ->where('tipIdentifier', $tipIdentifier)
+                $subquery = \App\Models\AutoUnit\League::select(
+                        DB::raw("IF (auto_unit_league.id IS NOT NULL, true, false)")
+                    )
+                    ->where('siteId', $siteId)
+                    ->where('tipIdentifier', $package->tipIdentifier)
                     ->where('type', 'default')
-                    /* ->where('leagueId', $league->id) */
-                    ->get();
+                    ->whereRaw("auto_unit_league.leagueId = league.id");
 
-                foreach ($leagues as $league) {
-                    $league->isAssociated = false;
-                    foreach ($associatedLeagues as $assocLeague) {
-                        if ($league->id == $assocLeague->leagueId) {
-                            $league->isAssociated = true;
-                            continue 2;
-                        }
-                    }
-                }
+                $associatedLeagues =\App\League::select(
+                        "league.id",
+                        DB::raw("CONCAT(country.name, ': ', league.name) AS name"),
+                        DB::raw("(" . $subquery->toSql() . ") AS isAssociated")
+                    )
+                    ->join("league_country", "league_country.leagueId", "league.id")
+                    ->join("country", "country.code", "league_country.countryCode")
+                    ->mergeBindings($subquery->getQuery())
+                    ->get()
+                    ->toArray();
 
                 $isDefaultConf = true;
 
                 // check if already exists leagues
             } else {
                 $schedule = \App\Models\AutoUnit\MonthlySetting::where('siteId', $siteId)
-                    ->where('tipIdentifier', $tipIdentifier)
+                    ->where('tipIdentifier', $package->tipIdentifier)
                     ->where('date', $date)
                     ->first();
-
-                $associatedLeagues = \App\Models\AutoUnit\League::where('siteId', $siteId)
-                    ->where('tipIdentifier', $tipIdentifier)
+                    
+                $subquery = \App\Models\AutoUnit\League::select(
+                        DB::raw("IF (auto_unit_league.id IS NOT NULL, true, false)")
+                    )
+                    ->where('siteId', $siteId)
+                    ->where('tipIdentifier', $package->tipIdentifier)
                     ->where('type', 'monthly')
                     ->where('date', $date)
-                    ->get();
+                    ->whereRaw("auto_unit_league.leagueId = league.id");
 
-                foreach ($leagues as $league) {
-                    $league->isAssociated = false;
-                    if (count($associatedLeagues) > 0) {
-                        foreach ($associatedLeagues as $assocLeague) {
-                            if ($league->id == $assocLeague->leagueId) {
-                                $league->isAssociated = true;
-                                continue 2;
-                            }
-                        }
-                    }
-                }
+                $associatedLeagues =\App\League::select(
+                        "league.id",
+                        DB::raw("CONCAT(country.name, ': ', league.name) AS name"),
+                        DB::raw("(" . $subquery->toSql() . ") AS isAssociated")
+                    )
+                    ->join("league_country", "league_country.leagueId", "league.id")
+                    ->join("country", "country.code", "league_country.countryCode")
+                    ->mergeBindings($subquery->getQuery())
+                    ->get()
+                    ->toArray();
 
                 $scheduleType = 'monthly';
 
@@ -432,25 +412,27 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 // get default configuration
                 if (! $schedule) {
                     $schedule = \App\Models\AutoUnit\DefaultSetting::where('siteId', $siteId)
-                        ->where('tipIdentifier', $tipIdentifier)
+                        ->where('tipIdentifier', $package->tipIdentifier)
                         ->first();
 
-                    $associatedLeagues = \App\Models\AutoUnit\League::where('siteId', $siteId)
-                        ->where('tipIdentifier', $tipIdentifier)
+                    $subquery = \App\Models\AutoUnit\League::select(
+                            DB::raw("IF (auto_unit_league.id IS NOT NULL, true, false)")
+                        )
+                        ->where('siteId', $siteId)
+                        ->where('tipIdentifier', $package->tipIdentifier)
                         ->where('type', 'default')
-                        ->get();
-
-                    foreach ($leagues as $league) {
-                        $league->isAssociated = false;
-                        if (count($associatedLeagues) > 0) {
-                            foreach ($associatedLeagues as $assocLeague) {
-                                if ($league->id == $assocLeague->leagueId) {
-                                    $league->isAssociated = true;
-                                    continue 2;
-                                }
-                            }
-                        }
-                    }
+                        ->whereRaw("auto_unit_league.leagueId = league.id");
+  
+                    $associatedLeagues =\App\League::select(
+                        "league.id",
+                        DB::raw("CONCAT(country.name, ': ', league.name) AS name"),
+                        DB::raw("(" . $subquery->toSql() . ") AS isAssociated")
+                    )
+                    ->join("league_country", "league_country.leagueId", "league.id")
+                    ->join("country", "country.code", "league_country.countryCode")
+                    ->mergeBindings($subquery->getQuery())
+                    ->get()
+                    ->toArray();
 
                     $scheduleType = 'monthly default';
                 }
@@ -462,8 +444,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 $schedule->isDays = ($package->subscriptionType == 'days');
                 $schedule->isDefaultConf = $isDefaultConf;
                 $schedule->predictions = [];
-                $schedule->leagues = $leagues;
-                $schedule->tipIdentifier = $tipIdentifier;
+                $schedule->leagues = $associatedLeagues;
+                $schedule->tipIdentifier = $package->tipIdentifier;
                 $schedule->scheduleType = $scheduleType;
                 $schedule->daysInMonth = (int) date('t', strtotime($date . '-01'));
 
@@ -516,7 +498,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 'isDays'        => ($package->subscriptionType == 'days'),
                 'isDefaultConf' => $isDefaultConf,
                 'predictions'   => [],
-                'leagues'       => $leagues,
+                'leagues'       => $associatedLeagues,
                 'tipIdentifier' => $tipIdentifier,
                 'scheduleType'  => $scheduleType,
             ];

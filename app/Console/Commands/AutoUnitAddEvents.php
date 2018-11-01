@@ -145,6 +145,8 @@ class AutoUnitAddEvents extends CronCommand
                     $event["awayTeamId"] = $matchWithResult->awayTeamId;
                     $event["eventDate"] = $matchWithResult->eventDate;
                     $event["predictionId"] = $odd->predictionId;
+                    $event["countryCode"] = $matchWithResult->countryCode;
+                    $event["country"] = $matchWithResult->country;
 
                     $packages = \App\Package::where('siteId', $schedule['siteId'])
                         ->where('tipIdentifier', $schedule['tipIdentifier'])

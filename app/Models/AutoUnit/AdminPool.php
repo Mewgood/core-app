@@ -87,6 +87,7 @@ class AdminPool extends Model {
                 "match.awayTeamId",
                 "match.result",
                 "match.countryCode",
+                "match.country",
                 "match.eventDate",
                 "match.sites_distributed_counter"
             )

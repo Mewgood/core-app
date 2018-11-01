@@ -343,6 +343,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $packages = \App\Package::distinct()
             ->where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
+            ->groupBy("tipIdentifier")
             ->get();
 
 

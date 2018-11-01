@@ -499,7 +499,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 'isDefaultConf' => $isDefaultConf,
                 'predictions'   => [],
                 'leagues'       => $associatedLeagues,
-                'tipIdentifier' => $tipIdentifier,
+                'tipIdentifier' => $package->tipIdentifier,
                 'scheduleType'  => $scheduleType,
             ];
 

@@ -15,14 +15,17 @@ class EventModel extends Model
 
         foreach ($data as $event) {
             $validMessage = EventModel::validate($event);
+            $errors[] = $validMessage;
             if ($validMessage["type"] == "error") {
                 $isErrored = true;
-                $errors[] = $validMessage;
             }
         }
         if ($isErrored) {
-            $errors[0]["type"] = "error";
-            return $errors;
+            return [
+                'type' => 'error',
+                'message' => "Failed to insert",
+                'data' => $errors
+            ];
         }
 
         foreach ($data as $event) {

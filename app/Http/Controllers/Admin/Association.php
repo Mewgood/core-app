@@ -362,9 +362,9 @@ class Association extends Controller
 
         foreach ($table as $item) {
             $validMessage = AssociationModel::validate($item, $systemDate);
+            $errors[] = $validMessage;
             if ($validMessage["type"] == "error") {
                 $isErrored = true;
-                $errors[] = $validMessage;
             }
             AssociationModel::validate($item, $systemDate);
         }

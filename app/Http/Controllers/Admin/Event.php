@@ -59,14 +59,14 @@ class Event extends Controller
         $events = $r->input('events');
         $errors = [];
         $isErrored = false;
-        
         foreach ($events as $event) {
             $validMessage = EventModel::validateAddFromMatch($event);
+            $errors[] = $validMessage;
             if ($validMessage["type"] == "error") {
                 $isErrored = true;
-                $errors[] = $validMessage;
             }
         }
+
         if ($isErrored) {
             return [
                 'type' => 'error',
@@ -307,12 +307,12 @@ class Event extends Controller
 
         try {
             $events = EventModel::bulkInsert($r->all()["events"]);
-            if (isset($events[0]["type"]) && $events[0]["type"] == "error") {
+            if (isset($events["type"]) && $events["type"] == "error") {
                 DB::rollback();
                 return [
                     'type' => 'error',
                     'message' => "Failed to insert some events",
-                    'data' => $events,
+                    'data' => $events["data"],
                 ];
             }
         } catch(\Exception $e) {
@@ -471,6 +471,9 @@ class Event extends Controller
             $where[] = ['eventDate', '<', Carbon::now('UTC')->modify('-105 minutes')];
             $where[] = ['result', '<>', ''];
             $where[] = ['statusId', '<>', ''];
+        }
+        if ($request->get('date')) {
+            $where[] = ['eventDate', 'like', '%' . $request->get('date') . '%'];
         }
 
         return $where;

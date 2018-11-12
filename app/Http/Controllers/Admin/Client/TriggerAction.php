@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin\Client;
 
 use App\Http\Controllers\Controller;
-use Iluminate\Http\Request;
+use Illuminate\Http\Request;
 use Ixudra\Curl\Facades\Curl;
 use App\Models\ArchiveModel;
 
@@ -149,5 +149,33 @@ class TriggerAction extends Controller
         }
 
         return (array) json_decode($json, true);
+    }
+    
+    public function resetToken(Request $request)
+    {
+        $site = \App\Site::find($request->siteId);
+        $site->token = bin2hex(random_bytes(16));
+        $site->save();
+
+        if ($site->type != "cms") {
+            $siteInstance = new \App\Http\Controllers\Admin\Site();
+            $conf = base64_encode(json_encode($siteInstance->getSiteConfiguration($site->id)));
+
+            $response = Curl::to($site->url)
+                ->withData([
+                    'route'  => 'api',
+                    'key'    => $site->token,
+                    'method' => 'resetToken',
+                    'data'   => $conf,
+                ])
+                ->post();
+
+            $response = $this->decodeJSON($response);
+            return $this->checkResponse($response, $site, "siteConfiguration");
+        }
+        return [
+            "type" => "success",
+            "message" => "Update site configuration with success"
+        ];
     }
 }

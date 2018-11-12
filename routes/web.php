@@ -1094,6 +1094,10 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param integer $id
     // @return array()
     $app->get('/site/update-client/{id}', 'Admin\Client\TriggerAction@updateConfiguration');
+    
+    // changes the site token and overwrites the token settings files in static sites
+    // CMS Tokens must be changed manually
+    $app->post('/site/reset-token', 'Admin\Client\TriggerAction@resetToken');
 
     // send client (site) request to update his arvhive big
     // route for client is hardcore in controller

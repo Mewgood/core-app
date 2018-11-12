@@ -10,7 +10,8 @@
         "vlucas/phpdotenv": "~2.2",
         "nathanmac/Parser": "^4.3",
         "ixudra/curl": "^6.12",
-        "phpmailer/phpmailer": "^6.0"
+        "phpmailer/phpmailer": "^6.0",
+        "doctrine/dbal": "^2.8"
     },
     "require-dev": {
         "fzaninotto/faker": "~1.4",

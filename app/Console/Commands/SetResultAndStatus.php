@@ -12,6 +12,10 @@ class SetResultAndStatus extends CronCommand
 
     public function fire()
     {
+        //$match = \App\Match::find();
+        //$autoUnitCron = new AutoUnitAddEvents();
+        //$autoUnitCron->fire($match);
+        
         //$cron = $this->startCron();
         $info = [
             'appEventNoResult' => 0,

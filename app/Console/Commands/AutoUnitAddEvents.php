@@ -415,37 +415,22 @@ class AutoUnitAddEvents extends CronCommand
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
         }
 
-        $event = $this->getWinnerEvent($schedule, $finishedEvents[$leagueId]);
-        
+        $event = $this->getWinnerEvent($schedule, $finishedEvents[$leagueId], $leagueId, $finishedEvents);
+
         //  if not found event unset current index and reset keys
         if ($event == null)
             return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
 
-        // check if the match was already distributed in the site
-        // a site cannot have the same match distributed twice with different predictions
-        if ($this->isMatchDistributed($event, $schedule)) {
-            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
-        }
-        // check if the event was already distributed in a different site
-        // events that were not distributed at all
-        // or have a lower value than the MAX number of events distributed in a site
-        // have a higher priority
-        if ($this->isDistributedTooManyTimes($event, $finishedEvents)) {
-            return $this->chooseEvent($schedule, $this->unsetIndex($leagues, $index), $finishedEvents);
-        }
-        
         $scheduleModel = \App\Models\AutoUnit\DailySchedule::where("id", "=", $schedule["id"])
             ->update([
                 "match_id" => $event["primaryId"],
                 "to_distribute" => $event["to_distribute"],
                 "odd_id" => $event["oddId"]
             ]);
-
-        $finishedEvents[$leagueId][$event["index"]]["sites_distributed_counter"] += 1;
         return $event;
     }
 
-    private function getWinnerEvent($schedule, $events)
+    private function getWinnerEvent($schedule, $events, $leagueId, &$totalEvents)
     {
         if (! count($events))
             return null;
@@ -463,15 +448,15 @@ class AutoUnitAddEvents extends CronCommand
             ->toArray();
 
         // Try next event if there is no odds
-        if (! count($odds))
-            return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index));
-
+        if (! count($odds)) {
+            return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
+        }
         // try to find correct status base on odd
         foreach ($odds as $odd) {
             $statusByScore = new \App\Src\Prediction\SetStatusByScore($event['result'], $odd['predictionId']);
             $statusByScore->evaluateStatus();
             $statusId = $statusByScore->getStatus();
-
+            
             if ($statusId < 1 || ($statusId == $schedule['statusId']) ) {
                 $event['matchId'] = $event['id'];
                 $event['source'] = 'feed';
@@ -495,10 +480,25 @@ class AutoUnitAddEvents extends CronCommand
             }
             // set the random event index from the list
             $event["index"] = $index;
+            
+            // check if the match was already distributed in the site
+            // a site cannot have the same match distributed twice with different predictions
+            if ($this->isMatchDistributed($event, $schedule)) {
+                return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
+            }
+            
+            // check if the event was already distributed in a different site
+            // events that were not distributed at all
+            // or have a lower value than the MAX number of events distributed in a site
+            // have a higher priority
+            if ($this->isDistributedTooManyTimes($event, $totalEvents)) {
+                return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
+            }
+            $totalEvents[$leagueId][$index]["sites_distributed_counter"] += 1;
             return $event;
         }
 
-        return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index));
+        return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
     }
 
     // @param array $schedule
@@ -604,9 +604,10 @@ class AutoUnitAddEvents extends CronCommand
         return false;
     }
     
-    private function isDistributedTooManyTimes(array $event, array $finishedEvents) : bool
+    private function isDistributedTooManyTimes(array $event, array &$finishedEvents) : bool
     {
         $matchIds = [];
+        $matchModel = \App\Match::where("id" , "=", $event["matchId"])->first();
 
         // map the match ids so we can limit the search
         foreach ($finishedEvents as $key => $value) {
@@ -616,14 +617,14 @@ class AutoUnitAddEvents extends CronCommand
         }
 
         $match = \App\Match::select(
-                DB::raw("MAX(sites_distributed_counter) AS max"),
-                DB::raw("MIN(sites_distributed_counter) AS min")
+                DB::raw("MAX(sites_distributed_counter) AS maxCounter"),
+                DB::raw("MIN(sites_distributed_counter) AS minCounter")
             )
             ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $this->systemDate . "'")
             ->whereIn("primaryId", $matchIds)
             ->first();
 
-        if ($event["sites_distributed_counter"] == $match->min) {
+        if ($matchModel->sites_distributed_counter == $match->minCounter) {
             return false;
         }
         return true;
@@ -631,9 +632,8 @@ class AutoUnitAddEvents extends CronCommand
     
     private function incrementDistributedCounter(int $matchId , int $value) : void
     {
+        $match = \App\Match::where("id", "=", $matchId)->increment("sites_distributed_counter", $value);
         $match = \App\Match::where("id", "=", $matchId)->first();
-        $match->sites_distributed_counter += $value;
-        $match->save();
     }
 }
 

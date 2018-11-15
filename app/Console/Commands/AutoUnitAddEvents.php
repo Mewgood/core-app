@@ -14,12 +14,14 @@ class AutoUnitAddEvents extends CronCommand
 
     private $allLeagues = [];
     private $useAllLeagues = false;
+    private $minimCondition = 0;
+    private $maximumCondition = 0;
 
     private $predictions = [];
 
     private $SiteAssocEvents = [];
 
-    public function fire($matchWithResult = null)
+    public function fire($matchWithResult = null, $changeMatch = false)
     {
         //$cron = $this->startCron();
 
@@ -113,7 +115,7 @@ class AutoUnitAddEvents extends CronCommand
 
             // verify if the match that got result from the feed
             // has the same statusId as the match in the auto-unit schedule
-            if ($matchWithResult !== null) {
+            if ($matchWithResult !== null && $changeMatch == false) {
                 foreach ($this->predictions as $prediction) {
                     $found = array_search($prediction, array_column($matchPredictionResults, 'predictionName'));
                     if ($found !== false) {
@@ -135,9 +137,9 @@ class AutoUnitAddEvents extends CronCommand
                     ]);
 
                     $this->incrementDistributedCounter($matchWithResult["id"], -1);
-                    $this->fire();
+                    $this->fire($matchWithResult, true);
                     return true;
-                } else {
+                } elseif ($changeMatch == false) {
                     $event = [];
                     $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
 
@@ -172,7 +174,11 @@ class AutoUnitAddEvents extends CronCommand
             // the auto-unit first checks in the admin-pool list of events
             // if it didn't find any event within that pool, that satisfies the site configuration for the auto-unit
             // it will continue to search within the rest of the events inside the application
-            $event = $this->chooseEvent($schedule, $leagueArr, $this->todayAdminPoolEvents);
+            $this->minimCondition = 0;
+            do {
+                $event = $this->chooseEvent($schedule, $leagueArr, $this->todayAdminPoolEvents);
+                $this->minimCondition += 1;
+            } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
 
             if ($event == null) {
                 $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-admin-pool' . $schedule['tipIdentifier']);
@@ -186,7 +192,14 @@ class AutoUnitAddEvents extends CronCommand
                         'info' => json_encode(["Site: " . $site->name . " could not find any event in the admin pool for tip: " . $schedule['tipIdentifier']]),
                     ]);
                 }
-                $event = $this->chooseEvent($schedule, $leagueArr, $this->todayEvents);
+                
+                $this->minimCondition = 0;
+                $this->maximumCondition = 0;
+
+                do {
+                    $event = $this->chooseEvent($schedule, $leagueArr, $this->todayEvents);
+                    $this->minimCondition += 1;
+                } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
             }
 
             if ($event == null) {
@@ -204,8 +217,14 @@ class AutoUnitAddEvents extends CronCommand
                     ]);
                 }
 
+                $this->minimCondition = 0;
+                $this->maximumCondition = 0;
+
                 // try with all leagues
-                $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayEvents);
+                do {
+                    $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayEvents);
+                    $this->minimCondition += 1;
+                } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
             }
 
             if ($event == null) {
@@ -449,6 +468,7 @@ class AutoUnitAddEvents extends CronCommand
 
         // Try next event if there is no odds
         if (! count($odds)) {
+            echo "NO ODD: " . $event['id'] . "\n";
             return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
         }
         // try to find correct status base on odd
@@ -624,7 +644,13 @@ class AutoUnitAddEvents extends CronCommand
             ->whereIn("primaryId", $matchIds)
             ->first();
 
-        if ($matchModel->sites_distributed_counter == $match->minCounter) {
+        $this->maximumCondition = $match->maxCounter;
+        
+        if (
+            $matchModel->sites_distributed_counter == ($match->minCounter + $this->minimCondition) &&
+            $match->minCounter + $this->minimCondition <= $this->maximumCondition
+        ) {
+            echo "MINIM CONDITION TRUE FOR: " . $event["matchId"] . " ||||" . $matchModel->sites_distributed_counter . " === " . $match->minCounter . " + " .  $this->minimCondition  . "\n";  
             return false;
         }
         return true;
@@ -632,8 +658,9 @@ class AutoUnitAddEvents extends CronCommand
     
     private function incrementDistributedCounter(int $matchId , int $value) : void
     {
-        $match = \App\Match::where("id", "=", $matchId)->increment("sites_distributed_counter", $value);
-        $match = \App\Match::where("id", "=", $matchId)->first();
+        $match = \App\Match::where("id", "=", $matchId)->increment("sites_distributed_counter", (int)$value);
+        $test = \App\Match::where("id", "=", $matchId)->first();
+        echo "INCREMENTED: " . $matchId . " COUNTER: " . $test->sites_distributed_counter . "\n";
     }
 }
 

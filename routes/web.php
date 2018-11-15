@@ -516,6 +516,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
     $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
     $app->post('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
+    $app->post('/auto-unit/change-match-status', 'Admin\AutoUnitDailySchedule@updateStatus');
     
     // auto-units
     // @param integer $siteId
@@ -772,7 +773,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $minDate = $archiveEvents[0]['systemDate'];
 
         // get scheduled events
-        $scheduledEvents = \App\Models\AutoUnit\DailySchedule::where('siteId', $siteId)
+        $scheduledEvents = \App\Models\AutoUnit\DailySchedule::select("*", "auto_unit_daily_schedule.id AS id")
+            ->where('siteId', $siteId)
             ->leftJoin("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
             ->leftJoin("odd", "odd.id", "auto_unit_daily_schedule.odd_id")
             ->where('tableIdentifier', $tableIdentifier)
@@ -781,6 +783,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->toArray();
 
         foreach ($scheduledEvents as $k => $v) {
+            $scheduledEvents[$k]['scheduleId'] = $v["id"];
             $scheduledEvents[$k]['homeTeam'] = $v["homeTeam"] ? $v["homeTeam"] : "?";
             $scheduledEvents[$k]['awayTeam'] = $v["awayTeam"] ? $v["awayTeam"] : "?";
             $scheduledEvents[$k]['league']   = $v["league"] ? $v["league"] : "?";

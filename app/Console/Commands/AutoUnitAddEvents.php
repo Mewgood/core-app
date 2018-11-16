@@ -21,17 +21,17 @@ class AutoUnitAddEvents extends CronCommand
 
     private $SiteAssocEvents = [];
 
-    public function fire($matchWithResult = null, $changeMatch = false)
+    public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null)
     {
         //$cron = $this->startCron();
 
         if ($matchWithResult !== null) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
             $this->systemDate = gmdate('Y-m-d', strtotime($matchWithResult->eventDate));
-            $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId);
+            $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId, $scheduleId);
         } else {
             $this->systemDate = gmdate('Y-m-d');
-            $schedules = $this->getAutoUnitTodaySchedule();
+            $schedules = $this->getAutoUnitTodaySchedule($scheduleId);
         }
 
         $info = [
@@ -137,8 +137,8 @@ class AutoUnitAddEvents extends CronCommand
                     ]);
 
                     $this->incrementDistributedCounter($matchWithResult["id"], -1);
-                    $this->fire($matchWithResult, true);
-                    return true;
+                    $this->fire($matchWithResult, true, $schedule["id"]);
+                    continue;
                 } elseif ($changeMatch == false) {
                     $event = [];
                     $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
@@ -166,7 +166,7 @@ class AutoUnitAddEvents extends CronCommand
                         'status' => 'success',
                         'info'   => json_encode(['Eligible event.']),
                     ]);
-                    return true;
+                    continue;
                 }
             }
             
@@ -594,19 +594,25 @@ class AutoUnitAddEvents extends CronCommand
 
     // get full schedule for today from autounit
     // @return array()
-    private function getAutoUnitTodaySchedule() : array
+    private function getAutoUnitTodaySchedule($scheduleId) : array
     {
         return \App\Models\AutoUnit\DailySchedule::where('systemDate', $this->systemDate)
             ->where('status', '!=', 'success')
+            ->when($scheduleId, function($query, $scheduleId) {
+                $query->where("id", $scheduleId);
+            })
             ->get()
             ->toArray();
     }
     
-    private function getAutoUnitFilteredSchedule($date, $matchId) : array
+    private function getAutoUnitFilteredSchedule($date, $matchId, $scheduleId) : array
     {
         return \App\Models\AutoUnit\DailySchedule::where('systemDate', $date)
             ->where('status', '=', 'waiting')
             ->where('match_id', '=', $matchId)
+            ->when($scheduleId, function($query, $scheduleId) {
+                $query->where("id", $scheduleId);
+            })
             ->get()
             ->toArray();
     }

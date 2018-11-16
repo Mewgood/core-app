@@ -14,7 +14,7 @@ class SetResultAndStatus extends CronCommand
     {
         // TESTING MANUAL SETTING A MATCH RESULT
         /*
-        $match = \App\Match::where("primaryId", "=", 80231)->first();
+        $match = \App\Match::where("primaryId", "=", 80527)->first();
         
         $events = \App\Event::where('matchId', $match->id)
                     ->where('leagueId', $match->leagueId)
@@ -39,12 +39,13 @@ class SetResultAndStatus extends CronCommand
         }
 
         $match->prediction_results = json_encode($matchPredictionResults);
-
-        $match->update();
+        
+        $match->save();
         $autoUnitCron = new AutoUnitAddEvents();
         $autoUnitCron->fire($match);
-        die("RESULT SET");
         */
+        die("RESULT SET");
+
         //$cron = $this->startCron();
         $info = [
             'appEventNoResult' => 0,

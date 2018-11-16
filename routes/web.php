@@ -731,6 +731,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->where('archive_big.tableIdentifier', $tableIdentifier)
             ->where('archive_big.systemDate', '>=', $date . '-01')
             ->where('archive_big.systemDate', '<=', $date . '-31')
+            ->groupBy("archive_big.id")
             ->get()
             ->toArray();
 
@@ -811,6 +812,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             })
             ->where('auto_unit_daily_schedule.tableIdentifier', $tableIdentifier)
             ->where('auto_unit_daily_schedule.date', $date)
+            ->groupBy("auto_unit_daily_schedule.id")
             ->get()
             ->toArray();
 

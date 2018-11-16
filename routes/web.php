@@ -516,7 +516,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
     $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
     $app->post('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
-    $app->post('/auto-unit/change-match-status', 'Admin\AutoUnitDailySchedule@updateStatus');
+    $app->post('/auto-unit/update-fields', 'Admin\AutoUnitDailySchedule@updateFields');
+    $app->post('/auto-unit/get-monthly-statistics', 'Admin\AutoUnitDailySchedule@getMonthlyStatistics');
     
     // auto-units
     // @param integer $siteId
@@ -704,6 +705,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $loss = 0;
         $draw = 0;
         $postp = 0;
+        $vip = 0;
 
         // get events for archive
         $archiveEvents = \App\ArchiveBig::select(
@@ -711,7 +713,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 "match.sites_distributed_counter",
                 "auto_unit_daily_schedule.invalid_matches",
                 "auto_unit_daily_schedule.status",
-                "auto_unit_daily_schedule.info"
+                "auto_unit_daily_schedule.info",
+                "package.isVip"
             )
             ->where('archive_big.siteId', $siteId)
             ->join("event", "event.id", "archive_big.eventId")
@@ -719,6 +722,11 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->join("auto_unit_daily_schedule", function($join) {
                 $join->on("auto_unit_daily_schedule.match_id", "=", "match.primaryId")
                     ->on("auto_unit_daily_schedule.siteId", "=", "archive_big.siteId");
+            })
+            ->join("package", function ($query) {
+                $query->on("package.siteId", "=", "auto_unit_daily_schedule.siteId");
+                $query->on("package.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
+                $query->on("package.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
             })
             ->where('archive_big.tableIdentifier', $tableIdentifier)
             ->where('archive_big.systemDate', '>=', $date . '-01')
@@ -762,6 +770,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
             if ($v['statusId'] == 4)
                 $postp++;
+            if ($v["isVip"]) {
+                $vip++;
+            }
         }
 
         usort($archiveEvents, function($a, $b) {
@@ -773,17 +784,43 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $minDate = $archiveEvents[0]['systemDate'];
 
         // get scheduled events
-        $scheduledEvents = \App\Models\AutoUnit\DailySchedule::select("*", "auto_unit_daily_schedule.id AS id")
-            ->where('siteId', $siteId)
+        $scheduledEvents = \App\Models\AutoUnit\DailySchedule::select(
+            "match.*",
+            "odd.*",
+            "auto_unit_monthly_setting.prediction1x2",
+            "auto_unit_monthly_setting.predictionOU",
+            "auto_unit_monthly_setting.predictionAH",
+            "auto_unit_monthly_setting.predictionGG",
+            "auto_unit_daily_schedule.*", 
+            "auto_unit_daily_schedule.id AS id",
+            "package.isVip"
+        )
+            ->where('auto_unit_daily_schedule.siteId', $siteId)
             ->leftJoin("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
             ->leftJoin("odd", "odd.id", "auto_unit_daily_schedule.odd_id")
-            ->where('tableIdentifier', $tableIdentifier)
-            ->where('date', $date)
+            ->join("auto_unit_monthly_setting", function ($query) {
+                $query->on("auto_unit_monthly_setting.siteId", "=", "auto_unit_daily_schedule.siteId");
+                $query->on("auto_unit_monthly_setting.date", "=", "auto_unit_daily_schedule.date");
+                $query->on("auto_unit_monthly_setting.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
+                $query->on("auto_unit_monthly_setting.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
+            })
+            ->join("package", function ($query) {
+                $query->on("package.siteId", "=", "auto_unit_daily_schedule.siteId");
+                $query->on("package.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
+                $query->on("package.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
+            })
+            ->where('auto_unit_daily_schedule.tableIdentifier', $tableIdentifier)
+            ->where('auto_unit_daily_schedule.date', $date)
             ->get()
             ->toArray();
 
         foreach ($scheduledEvents as $k => $v) {
             $scheduledEvents[$k]['scheduleId'] = $v["id"];
+            $scheduledEvents[$k]['prediction1x2'] = $v["prediction1x2"];
+            $scheduledEvents[$k]['predictionOU'] = $v["predictionOU"];
+            $scheduledEvents[$k]['predictionAH'] = $v["predictionAH"];
+            $scheduledEvents[$k]['predictionGG'] = $v["predictionGG"];
+            
             $scheduledEvents[$k]['homeTeam'] = $v["homeTeam"] ? $v["homeTeam"] : "?";
             $scheduledEvents[$k]['awayTeam'] = $v["awayTeam"] ? $v["awayTeam"] : "?";
             $scheduledEvents[$k]['league']   = $v["league"] ? $v["league"] : "?";
@@ -818,6 +855,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
             if ($v['statusId'] == 4)
                 $postp++;
+            if ($v["isVip"]) {
+                $vip++;
+            }
         }
 
         $allEvents = array_merge($scheduledEvents, $archiveEvents);
@@ -832,6 +872,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             'loss'   => $loss,
             'draw'   => $draw,
             'postp'  => $postp,
+            "vip"   => $vip,
             'winrate' => $win > 0 || $loss > 0 ? round(($win * 100) / ($win + $loss),2) : 0,
             'total'  => $win + $loss + $draw + $postp,
         ];

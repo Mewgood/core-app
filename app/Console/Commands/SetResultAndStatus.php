@@ -12,6 +12,40 @@ class SetResultAndStatus extends CronCommand
 
     public function fire()
     {
+        // TESTING MANUAL SETTING A MATCH RESULT
+        /*
+        $match = \App\Match::where("primaryId", "=", 80527)->first();
+        
+        $events = \App\Event::where('matchId', $match->id)
+                    ->where('leagueId', $match->leagueId)
+                    ->join("prediction", "prediction.identifier", "event.predictionId")
+                    ->get();
+
+        $matchPredictionResults = [];
+        $i = 0;
+
+        foreach ($events as $event) {
+            $statusByScore = new \App\Src\Prediction\SetStatusByScore($match->result, $event->predictionId);
+            $statusByScore->evaluateStatus();
+            $statusId = $statusByScore->getStatus();
+            
+            if ($statusId > 0) {
+                $eventInstance = new \App\Http\Controllers\Admin\Event();
+                $eventInstance->updateResultAndStatus($event->id, $match->result, $statusId);
+                $matchPredictionResults[$i]["predictionName"] = $event->predictionId;
+                $matchPredictionResults[$i]["value"] = $statusId;
+                $i++;
+            }
+        }
+
+        $match->prediction_results = json_encode($matchPredictionResults);
+        
+        $match->save();
+        $autoUnitCron = new AutoUnitAddEvents();
+        $autoUnitCron->fire($match);
+        */
+        //die("RESULT SET");
+
         //$cron = $this->startCron();
         $info = [
             'appEventNoResult' => 0,

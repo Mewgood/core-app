@@ -44,7 +44,7 @@ class SetResultAndStatus extends CronCommand
         $autoUnitCron = new AutoUnitAddEvents();
         $autoUnitCron->fire($match);
         */
-        die("RESULT SET");
+        //die("RESULT SET");
 
         //$cron = $this->startCron();
         $info = [

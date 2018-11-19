@@ -30,11 +30,12 @@ class DistributionPublish extends CronCommand
         $this->minute = intval(gmdate('i'));
         $this->hour = intval(gmdate('G'));
 
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
 
         $events = $this->loadData();
+
         if (!$events) {
-            $this->stopCron($cron, []);
+            //$this->stopCron($cron, []);
             return true;
         }
         $dataInfo = [
@@ -43,6 +44,7 @@ class DistributionPublish extends CronCommand
         ];
         foreach($events as $siteId => $values) {
             $site = Site::find($siteId);
+
             if (!$site) {
                 $dataInfo['errors'][] = "Couldn't find site with id $siteId";
                 continue;
@@ -55,8 +57,9 @@ class DistributionPublish extends CronCommand
                 // OR has already events published in the respective day
 
                 foreach($info['events'] as $event) {
-                    if (!$info['hasPublishedEvents'] && ($event->publishTime < $this->timestamp))
+                    if (!$info['hasPublishedEvents'] && ($event->publishTime < $this->timestamp)) {
                         continue;
+                    }
 
                     if (!$event->isPublish && $event->result && $event->status) {
                         if (!$this->publish($site, $event))
@@ -70,9 +73,12 @@ class DistributionPublish extends CronCommand
                 }
 
                 if (!$info['hasPublishedEvents']) {
+                    if ($siteId == 10) {
+                        var_dump("EVENT: " . $event->id . " PENDING: " . $info['hasPendingEvents']);
+                    }
                     if ($info['hasPendingEvents'])
                         continue;
-
+                    
                     if ($systemDate === $this->systemDate['yesterday']) {
                         // process events that weren't finished yesterday
 
@@ -138,7 +144,7 @@ class DistributionPublish extends CronCommand
             }
         }
         $this->info(json_encode($dataInfo));
-        $this->stopCron($cron, $dataInfo);
+        //$this->stopCron($cron, $dataInfo);
         return true;
     }
 
@@ -195,7 +201,6 @@ class DistributionPublish extends CronCommand
                 unset($data[$siteId][$date]['tmp']);
             }
         }
-
         return $data;
     }
 

@@ -619,7 +619,7 @@ class AutoUnitAddEvents extends CronCommand
     
     private function isMatchDistributed(array $event, array $schedule) : bool
     {
-        $distributed = \App\Models\AutoUnit\DailySchedule::where("match_id", "=", $event["matchId"])
+        $distributed = \App\Models\AutoUnit\DailySchedule::where("match_id", "=", $event["primaryId"])
             ->where("systemDate", "=", $event['systemDate'])
             ->where("siteId", "=", $schedule["siteId"])
             ->exists();

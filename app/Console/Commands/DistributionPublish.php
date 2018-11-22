@@ -60,8 +60,7 @@ class DistributionPublish extends CronCommand
                     if (!$info['hasPublishedEvents'] && ($event->publishTime < $this->timestamp)) {
                         continue;
                     }
-
-                    if (!$event->isPublish && $event->result && $event->status) {
+                    if (!$event->isPublish && $event->result && $event->status && $this->timestamp >= $event->publishTime) {
                         if (!$this->publish($site, $event))
                             $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
                         else {
@@ -73,12 +72,9 @@ class DistributionPublish extends CronCommand
                 }
 
                 if (!$info['hasPublishedEvents']) {
-                    if ($siteId == 10) {
-                        var_dump("EVENT: " . $event->id . " PENDING: " . $info['hasPendingEvents']);
-                    }
                     if ($info['hasPendingEvents'])
                         continue;
-                    
+
                     if ($systemDate === $this->systemDate['yesterday']) {
                         // process events that weren't finished yesterday
 
@@ -124,10 +120,22 @@ class DistributionPublish extends CronCommand
                             continue;
 
                         if (!$info['publishTime']) {
-                            if ($info['winRate'] >= 50)
+                            if ($info['winRate'] >= 50) {
+                                foreach($info['events'] as $event) {
+                                    if ($event->isPublish)
+                                        continue;
+
+                                    if (!$this->publish($site, $event))
+                                        $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
+                                    else
+                                        $dataInfo['sent']++;
+                                }
+                                
                                 $info['publishTime'] = strtotime('today ' . getenv('PUBLISH_EVENTS_ON_WIN_START') . ':00:00') + mt_rand(0, 4 * 60 * 60);
-                            else
+                            }
+                            else {
                                 $info['publishTime'] = strtotime('tomorrow 09:00:00') + mt_rand(0, 30 * 60);
+                            }
 
                         }
                         foreach ($info['events'] as $event) {

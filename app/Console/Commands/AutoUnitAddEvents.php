@@ -16,6 +16,7 @@ class AutoUnitAddEvents extends CronCommand
     private $useAllLeagues = false;
     private $minimCondition = 0;
     private $maximumCondition = 0;
+    private $isFromAdminPool = 0;
 
     private $predictions = [];
 
@@ -181,6 +182,7 @@ class AutoUnitAddEvents extends CronCommand
             } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
 
             if ($event == null) {
+                $this->isFromAdminPool = 0;
                 $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-admin-pool' . $schedule['tipIdentifier']);
                 if (! \App\Models\Log::where('identifier', $checksum)->where('status', 1)->count()) {
                     $site = \App\Site::find($schedule['siteId']);
@@ -200,6 +202,8 @@ class AutoUnitAddEvents extends CronCommand
                     $event = $this->chooseEvent($schedule, $leagueArr, $this->todayEvents);
                     $this->minimCondition += 1;
                 } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
+            } else {
+                $this->isFromAdminPool = 1;
             }
 
             if ($event == null) {
@@ -259,17 +263,29 @@ class AutoUnitAddEvents extends CronCommand
                 ->where('tipIdentifier', $schedule['tipIdentifier'])
                 ->get();
 
+            if (isset($event["error"]) && $event["error"]) {
+                \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                ->update([
+                    'is_from_admin_pool' => $this->isFromAdminPool,
+                    'status' => 'error',
+                    'info'   => json_encode(['Match result status is invalid']),
+                ]);
+                continue;
+            }
+                
             if ($event["to_distribute"]) {
                 $this->distributeEvent($eventModel, $packages);
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
                     'to_distribute' => true,
+                    'is_from_admin_pool' => $this->isFromAdminPool,
                     'status' => 'success',
                     'info'   => json_encode(['Eligible event.']),
                 ]);
             } else {
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
+                    'is_from_admin_pool' => $this->isFromAdminPool,
                     'status' => 'waiting',
                     'info'   => json_encode(['Ineligible event.']),
                 ]);
@@ -461,8 +477,7 @@ class AutoUnitAddEvents extends CronCommand
         $odds = \App\Models\Events\Odd::where('matchId', $event['id'])
             ->where('leagueId', $event['leagueId'])
             ->whereIn('predictionId', $this->predictions)
-            ->where('odd', '>=', $schedule['minOdd'])
-            ->where('odd', '<=', $schedule['maxOdd'])
+            ->whereBetween ('odd', [$schedule['minOdd'], $schedule['maxOdd']])
             ->get()
             ->toArray();
 
@@ -476,7 +491,11 @@ class AutoUnitAddEvents extends CronCommand
             $statusByScore = new \App\Src\Prediction\SetStatusByScore($event['result'], $odd['predictionId']);
             $statusByScore->evaluateStatus();
             $statusId = $statusByScore->getStatus();
-            
+        
+            if ($statusId == -1 && $event['result'] != '') {
+                $event['error'] = true;
+            }
+
             if ($statusId < 1 || ($statusId == $schedule['statusId']) ) {
                 $event['matchId'] = $event['id'];
                 $event['source'] = 'feed';

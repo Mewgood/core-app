@@ -514,10 +514,11 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     });
 
     $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
-    $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
     $app->post('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
     $app->post('/auto-unit/update-fields', 'Admin\AutoUnitDailySchedule@updateFields');
     $app->post('/auto-unit/get-monthly-statistics', 'Admin\AutoUnitDailySchedule@getMonthlyStatistics');
+    $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
+    $app->get('/auto-unit/sites/statistics', 'Admin\AutoUnitDailySchedule@getAutoUnitSiteStatistics');
     
     // auto-units
     // @param integer $siteId

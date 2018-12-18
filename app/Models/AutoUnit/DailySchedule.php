@@ -3,6 +3,8 @@
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+use App\Site;
+
 class DailySchedule extends Model {
 
     protected $table = 'auto_unit_daily_schedule';
@@ -20,7 +22,8 @@ class DailySchedule extends Model {
         'invalid_matches',
         'match_id',
         'odd_id',
-        'to_distribute'
+        'to_distribute',
+        'is_from_admin_pool'
     ];
 
     public static function getMonthlyStatistics(int $siteId)
@@ -68,11 +71,81 @@ class DailySchedule extends Model {
         ->get();
 
         foreach ($data as $item) {
-            $item->winRate = $item->win > 0 || $item->loss < 0 
+            $item->winRate = $item->win > 0 || $item->loss > 0 
                 ? round(($item->win * 100) / ($item->win + $item->loss), 2) 
                 : 0;
         }
         return $data;
+    }
+    
+    public static function getAutoUnitSiteStatistics()
+    {
+        $data = Site::select(
+                "site.id",
+                "site.name",
+                "auto_unit_monthly_setting.date",
+                DB::raw("
+                    (
+                        SELECT COUNT(DISTINCT pk.tableIdentifier)
+                        FROM package pk
+                        WHERE pk.siteId = site.id
+                    ) AS siteTablesCounter"
+                ),
+                DB::raw("
+                    (
+                        SELECT COUNT(DISTINCT aums.tableIdentifier)
+                        FROM auto_unit_monthly_setting aums
+                        WHERE aums.siteId = site.id
+                        AND DATE_FORMAT(STR_TO_DATE(aums.date, '%Y-%m'), '%Y-%m') = DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, '%Y-%m'), '%Y-%m')
+                    ) AS siteConfiguredTablesCounter"
+                ),
+                DB::raw("
+                    (CASE
+                        WHEN (SELECT siteTablesCounter) = (SELECT siteConfiguredTablesCounter) THEN 1
+                        ELSE 2
+                    END) AS configurationStatus"
+                )
+            )
+            ->join("package", "package.siteId", "=", "site.id")
+            ->leftJoin("auto_unit_monthly_setting", "auto_unit_monthly_setting.siteId", "=", "site.id")
+            ->whereRaw('DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, "%Y-%m"), "%Y-%m") >= DATE_FORMAT(CURDATE(), "%Y-%m")')
+            ->groupBy("date", "site.id")
+            ->get();
+
+        $data = self::formatAutoUnitSiteStatisticsData($data);
+        return $data;
+    }
+    
+    // populate with empty data for the missing dates
+    private static function formatAutoUnitSiteStatisticsData($data)
+    {
+        $dates = [0, 1, 2, 3, 4, 5, 6];
+        $formatedData = [];
+        $i = 0;
+
+        foreach ($data as $item) {
+            // set the empty value for each month
+            foreach ($dates as $date) {
+                $tempDate = gmdate('Y-m', strtotime('+ ' . $date . ' month'));
+                if (!isset($formatedData[$item->id][$tempDate])) {
+                    $temp = [
+                        "date"  => $tempDate,
+                        "id"    => $item->id
+                    ];
+                    $formatedData[$item->id][$tempDate] = $temp;
+                }
+            }
+            // overwrite it if the autounit is set for that month
+            $formatedData[$item->id][$item->date] = $item;
+            
+            // workaround to allow Template7 to compile the table correctly
+            // one site instance per row
+            if (!isset($formatedData[$item->id]["display"])) {
+                $formatedData[$item->id][$item->date]["display"] = true;
+                $formatedData[$item->id]["display"] = true;
+            }
+        }
+        return $formatedData;
     }
 }
 

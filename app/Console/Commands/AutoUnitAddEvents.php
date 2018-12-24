@@ -134,9 +134,13 @@ class AutoUnitAddEvents extends CronCommand
                     
                     \App\Models\Autounit\DailySchedule::find($schedule['id'])
                     ->update([
-                        'invalid_matches' => json_encode($invalidMatches)
+                        'invalid_matches' => json_encode($invalidMatches),
+                        'match_id' => NULL
                     ]);
 
+                    // delete the events for the invalid match
+                    // if none of the autounit schedules have it
+                    $this->checkScheduledMatchExists($matchWithResult, $schedule);
                     $this->incrementDistributedCounter($matchWithResult["id"], -1);
                     $this->fire($matchWithResult, true, $schedule["id"]);
                     continue;
@@ -686,6 +690,20 @@ class AutoUnitAddEvents extends CronCommand
         $match = \App\Match::where("id", "=", $matchId)->increment("sites_distributed_counter", (int)$value);
         $test = \App\Match::where("id", "=", $matchId)->first();
         echo "INCREMENTED: " . $matchId . " COUNTER: " . $test->sites_distributed_counter . "\n";
+    }
+    private function checkScheduledMatchExists($match, $schedule)
+    {
+        $scheduledMatch = \App\Models\Autounit\DailySchedule::where('match_id', '=', $match->primaryId)
+                        ->where("odd_id", "=", $schedule["odd_id"])
+                        ->exists();
+
+        if (!$scheduledMatch) {
+            $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
+            \App\Event::where('matchId', $match->id)
+                ->where('provider', '=', 'autounit')
+                ->where('predictionId', '=', $odd->predictionId)
+                ->delete();
+        }
     }
 }
 

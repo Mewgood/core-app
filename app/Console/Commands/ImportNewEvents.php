@@ -240,6 +240,8 @@ class ImportNewEvents extends CronCommand
             if ($oddExists)
                 continue;
 
+            $odd['value'] = $this->roundOdds($odd['value']);
+            
             \App\Models\Events\Odd::create([
                 'matchId' => $matchId,
                 'leagueId' => $leagueId,
@@ -247,5 +249,24 @@ class ImportNewEvents extends CronCommand
                 'odd' => number_format((float) $odd['value'], 2, '.', ''),
             ]);
         }
+    }
+    
+    private function roundOdds($odd) {
+        $stringOdd = (string)$odd;
+        $firstDecimal = (int)substr($stringOdd, 2, strlen($stringOdd) - 1);
+        $lastDecimal = (int)substr($stringOdd, 3, strlen($stringOdd));
+        
+        if ($lastDecimal == 0) {
+            return (float)$stringOdd;
+        } elseif ($lastDecimal < 3) {
+            $lastDecimal = 0;
+        } elseif ($lastDecimal >= 3 && $lastDecimal < 8) {
+            $lastDecimal = 5;
+        } elseif ($lastDecimal >= 8) {
+            $firstDecimal = 1 + (int)$firstDecimal;
+            $lastDecimal = $firstDecimal . "0";
+        }
+        $stringOdd = substr_replace($stringOdd, $lastDecimal, strlen($stringOdd) - strlen($lastDecimal), strlen($stringOdd));
+        return (float)$stringOdd;
     }
 }

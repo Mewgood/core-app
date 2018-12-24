@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 class DefaultSetting extends Model {
 
     protected $table = 'auto_unit_default_setting';
+    
+    protected $appends = ["packages"];
 
     protected $fillable = [
         'siteId',
@@ -24,6 +26,16 @@ class DefaultSetting extends Model {
         'maxTips',
         'tipsPerDay',
     ];
+
+    public function getPackagesAttribute()
+    {
+        return $this->attributes['packages'];
+    }
+
+    public function setPackagesAttribute($value)
+    {
+        $this->attributes['packages'] = $value;
+    }
 
 //    protected $hidden = [ ‘password’ ];
 }

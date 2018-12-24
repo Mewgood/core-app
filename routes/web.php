@@ -346,12 +346,15 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->groupBy("tipIdentifier")
             ->get();
 
-
         // get configuration for each tip
         $data = [];
         $scheduleType = 'default';
 
         foreach ($packages as $key => $package) {
+            $packageNames = \App\Package::where('siteId', $siteId)
+                ->where('tableIdentifier', $tableIdentifier)
+                ->where('tipIdentifier', $package->tipIdentifier)
+                ->get();
             $isDefaultConf = false;
 
             if ($date == 'default') {
@@ -492,6 +495,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 }
 
                 $data[$key] = $schedule;
+                $data[$key]->packages = $packageNames;
 
                 continue;
             }

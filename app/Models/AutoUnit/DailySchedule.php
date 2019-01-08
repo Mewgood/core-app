@@ -102,17 +102,19 @@ class DailySchedule extends Model {
                 DB::raw("
                     (CASE
                         WHEN (SELECT siteTablesCounter) = (SELECT siteConfiguredTablesCounter) THEN 1
+                        WHEN (SELECT siteConfiguredTablesCounter) = 0 THEN NULL
                         ELSE 2
                     END) AS configurationStatus"
                 )
             )
             ->join("package", "package.siteId", "=", "site.id")
-            ->leftJoin("auto_unit_monthly_setting", "auto_unit_monthly_setting.siteId", "=", "site.id")
-            ->whereRaw('DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, "%Y-%m"), "%Y-%m") >= DATE_FORMAT(CURDATE(), "%Y-%m")')
+            ->leftJoin("auto_unit_monthly_setting", function ($query) {
+                $query->on("auto_unit_monthly_setting.siteId", "=", "site.id");
+                $query->whereRaw('DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, "%Y-%m"), "%Y-%m") >= DATE_FORMAT(CURDATE(), "%Y-%m")');
+            })
             ->groupBy("date", "site.id")
             ->get()
             ->toArray();
-
         $data = self::formatAutoUnitSiteStatisticsData($data);
         return $data;
     }
@@ -125,41 +127,60 @@ class DailySchedule extends Model {
 
         foreach ($data as $item) {
             // set the empty value for each month
+            $firstIteration = true;
             foreach ($dates as $date) {
                 $tempDate = gmdate('Y-m', strtotime('+ ' . $date . ' month'));
                 if (!isset($formatedData[$item["id"]][$tempDate])) {
                     $hasSubscription = Site::hasSubscription($item["id"]); // RU || NU
-
+                    $configurationStatus = false;
                     $temp = [
                         "date"  => $tempDate,
                         "id"    => $item["id"],
+                        "name"  => $item["name"],
+                        "test" => $item["date"],
+                        "display" => $firstIteration
                     ];
-                    if ($hasSubscription) {
-                        $formatedData["ru"][$item["id"]][$tempDate][] = $temp;
-                    } else {
-                        $formatedData["nu"][$item["id"]][$tempDate][] = $temp;
+                    if ($item["date"] == "") {
+                        $item["date"] = $tempDate;
                     }
-                    
+                    if ($hasSubscription) {
+                        $formatedData["ru"][$item["id"]]["display"] = $firstIteration;
+                        if (
+                            isset($formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"]) &&
+                            $formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"] !== false
+                        ) {
+                            $configurationStatus = $formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"];
+                        } else if ($item["date"] == $tempDate) {
+                            $configurationStatus = $item["configurationStatus"];
+                        }
+                        $temp["configurationStatus"] = $configurationStatus;
+                        $formatedData["ru"][$item["id"]][$tempDate] = $temp;
+                    } else {
+                        $formatedData["nu"][$item["id"]]["display"] = $firstIteration;
+                        if (
+                            isset($formatedData["nu"][$item["id"]][$tempDate]["configurationStatus"]) &&
+                            $formatedData["nu"][$item["id"]][$tempDate]["configurationStatus"] !== false
+                        ) {
+                            $configurationStatus = $formatedData["nu"][$item["id"]][$tempDate]["configurationStatus"];
+                        } else if ($item["date"] == $tempDate) {
+                            $configurationStatus = $item["configurationStatus"];
+                        }
+                        $temp["configurationStatus"] = $configurationStatus;
+                        $formatedData["nu"][$item["id"]][$tempDate] = $temp;
+                    }
                 }
+                $firstIteration = false;
             }
             $item["tipsLeft"] = Site::getLastSubscription($item["id"])->tipsLeft;
             $item["lastSubscription"] = Site::getLastSubscription($item["id"])->dateEnd;
+
             // overwrite it if the autounit is set for that month
             if ($hasSubscription) {
-                $formatedData["ru"][$item["id"]][$item["date"]] = $item;
+                $formatedData["ru"][$item["id"]][$item["date"]]["lastSubscription"] = $item["lastSubscription"];
+                $formatedData["ru"][$item["id"]][$item["date"]]["tipsLeft"] = $item["tipsLeft"];
             } else {
-                $formatedData["nu"][$item["id"]][$item["date"]] = $item;
-            }
-            
-            
-            // workaround to allow Template7 to compile the table correctly
-            // one site instance per row
-            if (!isset($formatedData["ru"][$item["id"]]["display"]) && $hasSubscription) {
-                $formatedData["ru"][$item["id"]][$item["date"]]["display"] = true;
-                $formatedData["ru"][$item["id"]]["display"] = true;
-            } else if (!isset($formatedData["nu"][$item["id"]]["display"]) && !$hasSubscription) {
-                $formatedData["nu"][$item["id"]][$item["date"]]["display"] = true;
-                $formatedData["nu"][$item["id"]]["display"] = true;
+                $formatedData["nu"][$item["id"]][$item["date"]]["lastSubscription"] = $item["lastSubscription"];
+                $formatedData["nu"][$item["id"]][$item["date"]]["tipsLeft"] = $item["tipsLeft"];
             }
         }
         return $formatedData;

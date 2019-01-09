@@ -94,6 +94,11 @@ class Match extends Controller
         }
     }
 
+    public function getMatchPredictionOdd($predictionIdentifier, $matchId) {
+        $odd = \App\Match::getMatchPredictionOdd($predictionIdentifier, $matchId);
+        return response($odd, 200);
+    }
+    
     public function store() {}
 
     public function update() {}

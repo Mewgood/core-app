@@ -3,6 +3,8 @@
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+use App\Models\Odd;
+
 class Match extends Model {
 
     protected $table = 'match';
@@ -42,5 +44,16 @@ class Match extends Model {
                     ->get();
         $total = DB::select(DB::raw('SELECT FOUND_ROWS() as total_count'));
         return [$matches, $total[0]->total_count];
+    }
+    
+    public static function getMatchPredictionOdd($predictionIdentifier, $matchId)
+    {
+        $odd = Odd::select(
+                    "odd"
+                )
+                ->where("predictionId", "=", $predictionIdentifier)
+                ->where("matchId", "=", $matchId)
+                ->first();
+        return $odd;
     }
 }

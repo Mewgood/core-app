@@ -1387,6 +1387,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string $filter
     // @return array()
     $app->get('/match/filter/{table}/{filter}/{date}', 'Admin\Match@getMatchesByFilter');
+    
+    $app->get('/match/prediction/odds/{predictionIdentifier}/{matchId}', 'Admin\Match@getMatchPredictionOdd');
 	
     // get match by id
     // @param integer $id

@@ -44,10 +44,6 @@ class AutoUnitAddEvents extends CronCommand
         foreach (\App\League::all() as $l) {
             $this->allLeagues[] = $l->id;
         }
-        
-        if ($changeMatch) {
-            var_dump($schedules);
-        }
 
         // load today finished events
         $this->setTodayEvents();

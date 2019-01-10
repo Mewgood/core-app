@@ -159,7 +159,10 @@ class DistributionPublish extends CronCommand
     protected function loadData()
     {
         $data = [];
-        foreach (Distribution::whereIn('systemDate', array_values($this->systemDate))->get() as $value) {
+        $distributions = Distribution::whereIn('systemDate', array_values($this->systemDate))
+            ->where("to_distribute", "=", 1)
+            ->get();
+        foreach ($distributions as $value) {
             if (!isset($data[$value->siteId]))
                 $data[$value->siteId] = [];
             if (!isset($data[$value->siteId][$value->systemDate]))

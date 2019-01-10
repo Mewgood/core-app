@@ -27,6 +27,7 @@ class Association extends Model {
         'statusId',
         'eventDate',
         'systemDate',
+        'to_distribute'
     ];
 
     // get the status name associated with event

@@ -44,6 +44,10 @@ class AutoUnitAddEvents extends CronCommand
         foreach (\App\League::all() as $l) {
             $this->allLeagues[] = $l->id;
         }
+        
+        if ($changeMatch) {
+            var_dump($schedules);
+        }
 
         // load today finished events
         $this->setTodayEvents();
@@ -134,8 +138,7 @@ class AutoUnitAddEvents extends CronCommand
                     
                     \App\Models\Autounit\DailySchedule::find($schedule['id'])
                     ->update([
-                        'invalid_matches' => json_encode($invalidMatches),
-                        'match_id' => NULL
+                        'invalid_matches' => json_encode($invalidMatches)
                     ]);
 
                     // delete the events for the invalid match
@@ -160,8 +163,14 @@ class AutoUnitAddEvents extends CronCommand
                         ->get();
                     $eventModel = $this->getOrCreateEvent($event);
 
-                    $this->distributeEvent($eventModel, $packages);
-                    
+                    $assoc = \App\Association::where('eventId', $eventModel['id'])
+                                ->where('predictionId', $event['predictionId'])
+                                ->updateOrCreate(['to_distribute' => true]);
+                    $distribution = \App\Distribution::where('associationId', $assoc->id)
+                                        ->update([
+                                            'to_distribute' => true,
+                                            'result' => $matchWithResult->result
+                                        ]);
                     $message = "Valid match result for schedule<" . $schedule["id"] . "> | Match<" . $schedule["match_id"] . ">";
                     echo $message . "\n";
 
@@ -276,9 +285,12 @@ class AutoUnitAddEvents extends CronCommand
                 ]);
                 continue;
             }
-                
+            if ($changeMatch) {
+                $this->deleteInvalidDistribution($matchWithResult, $schedule);
+                $this->deleteInvalidAssociation($matchWithResult, $schedule);
+            }
+            $this->distributeEvent($eventModel, $packages);
             if ($event["to_distribute"]) {
-                $this->distributeEvent($eventModel, $packages);
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
                     'to_distribute' => true,
@@ -289,6 +301,7 @@ class AutoUnitAddEvents extends CronCommand
             } else {
                 \App\Models\Autounit\DailySchedule::find($schedule['id'])
                 ->update([
+                    'to_distribute' => false,
                     'is_from_admin_pool' => $this->isFromAdminPool,
                     'status' => 'waiting',
                     'info'   => json_encode(['Ineligible event.']),
@@ -333,12 +346,12 @@ class AutoUnitAddEvents extends CronCommand
 			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
 				$event['country'] = $countryAlias->alias;
 			}
-			
-			
             $ev = \App\Event::create($event);
+            $ev = $ev->toArray();
+            $ev["to_distribute"] = $event["to_distribute"];
 		}
-
-        return $ev->toArray();
+        
+        return is_array($ev) ? $ev : $ev->toArray();
     }
 
     private function getOrCreateAssociation($event)
@@ -691,6 +704,7 @@ class AutoUnitAddEvents extends CronCommand
         $test = \App\Match::where("id", "=", $matchId)->first();
         echo "INCREMENTED: " . $matchId . " COUNTER: " . $test->sites_distributed_counter . "\n";
     }
+
     private function checkScheduledMatchExists($match, $schedule)
     {
         $scheduledMatch = \App\Models\Autounit\DailySchedule::where('match_id', '=', $match->primaryId)
@@ -704,6 +718,29 @@ class AutoUnitAddEvents extends CronCommand
                 ->where('predictionId', '=', $odd->predictionId)
                 ->delete();
         }
+    }
+
+    private function deleteInvalidDistribution($match, $schedule)
+    {
+        \App\Distribution::where("siteId", "=", $schedule["siteId"])
+            ->where("tableIdentifier", "=", $schedule["tableIdentifier"])
+            ->where("tipIdentifier", "=", $schedule["tipIdentifier"])
+            ->where("systemDate", "=", $schedule["systemDate"])
+            ->where('leagueId', $match["leagueId"])
+            ->where("homeTeamId", "=", $match["homeTeamId"])
+            ->where("awayTeamId", "=", $match["awayTeamId"])
+            ->where("provider", "=", "autounit")
+            ->delete();
+    }
+    
+    private function deleteInvalidAssociation($match, $schedule)
+    {
+        \App\Association::where("systemDate", "=", $schedule["systemDate"])
+            ->where('leagueId', $match["leagueId"])
+            ->where("homeTeamId", "=", $match["homeTeamId"])
+            ->where("awayTeamId", "=", $match["awayTeamId"])
+            ->where("provider", "=", "autounit")
+            ->delete();
     }
 }
 

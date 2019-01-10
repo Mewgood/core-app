@@ -143,7 +143,6 @@ class Association extends Controller
         foreach ($packages as $p) {
 
             $site = \App\Site::find($p->siteId);
-
             // create array
             if (!array_key_exists($site->name, $keys)) {
                 $keys[$site->name] = $increments;

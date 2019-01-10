@@ -118,7 +118,16 @@ class Distribution extends Controller
                 $package = \App\Package::find($assocPack['packageId']);
 
                 // get events for package
-                $distributedEvents = \App\Distribution::where('packageId', $package->id)->where('systemdate', $date)->get();
+                $distributedEvents = \App\Distribution::select("distribution.*", "auto_unit_daily_schedule.is_from_admin_pool")
+                    ->join("event", "event.id", "distribution.eventId")
+                    ->join("match", "match.id", "event.matchId")
+                    ->leftJoin("auto_unit_daily_schedule", function($query) {
+                        $query->on("auto_unit_daily_schedule.match_id", "match.primaryId");
+                        $query->on("auto_unit_daily_schedule.siteId", "distribution.siteId");
+                    })
+                    ->where('distribution.packageId', $package->id)
+                    ->where('distribution.systemdate', $date)
+                    ->get();
 
                 // add status to distributed events
                 foreach ($distributedEvents as $distributedEvent)
@@ -241,6 +250,7 @@ class Distribution extends Controller
 								
 								$event_data['distributionId'] = $event['id'];
                                 $event_data['to_distribute'] = $event['to_distribute'];
+                                $event_data['is_from_admin_pool'] = $event['is_from_admin_pool'];
 								$event_data['eventDistributionIds'] = $event['id'];
 								$event_data['eventId'] = $event['eventId'];								
 								$event_data['isEmailSend'] = $event['isEmailSend'];

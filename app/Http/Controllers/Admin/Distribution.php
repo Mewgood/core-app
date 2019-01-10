@@ -240,6 +240,7 @@ class Distribution extends Controller
 								$event_time = substr($event_time, 0 , 5); 
 								
 								$event_data['distributionId'] = $event['id'];
+                                $event_data['to_distribute'] = $event['to_distribute'];
 								$event_data['eventDistributionIds'] = $event['id'];
 								$event_data['eventId'] = $event['eventId'];								
 								$event_data['isEmailSend'] = $event['isEmailSend'];

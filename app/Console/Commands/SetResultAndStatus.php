@@ -13,8 +13,8 @@ class SetResultAndStatus extends CronCommand
     public function fire()
     {
         // TESTING MANUAL SETTING A MATCH RESULT
-        
-        $match = \App\Match::where("primaryId", "=", 92809)->first();
+
+        $match = \App\Match::where("primaryId", "=", 93176)->first();
         
         $events = \App\Event::where('matchId', $match->id)
                     ->where('leagueId', $match->leagueId)

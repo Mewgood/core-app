@@ -13,7 +13,7 @@ class SetResultAndStatus extends CronCommand
     public function fire()
     {
         // TESTING MANUAL SETTING A MATCH RESULT
-
+        /*
         $match = \App\Match::where("primaryId", "=", 93176)->first();
         
         $events = \App\Event::where('matchId', $match->id)
@@ -45,6 +45,7 @@ class SetResultAndStatus extends CronCommand
         $autoUnitCron->fire($match);
         
         die("RESULT SET");
+        */
 
         //$cron = $this->startCron();
         $info = [

@@ -157,10 +157,11 @@ class AutoUnitAddEvents extends CronCommand
                         ->where('tipIdentifier', $schedule['tipIdentifier'])
                         ->get();
                     $eventModel = $this->getOrCreateEvent($event);
-
                     $assoc = \App\Association::where('eventId', $eventModel['id'])
                                 ->where('predictionId', $event['predictionId'])
-                                ->updateOrCreate(['to_distribute' => true]);
+                                ->first();
+                    $assoc->to_distribute = true;
+                    $assoc->save();
                     $distribution = \App\Distribution::where('associationId', $assoc->id)
                                         ->update([
                                             'to_distribute' => true,

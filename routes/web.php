@@ -799,11 +799,19 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             "auto_unit_monthly_setting.predictionGG",
             "auto_unit_daily_schedule.*", 
             "auto_unit_daily_schedule.id AS id",
-            "package.isVip"
+            "package.isVip",
+            "distribution.id AS distributionId"
         )
             ->where('auto_unit_daily_schedule.siteId', $siteId)
             ->leftJoin("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
             ->leftJoin("odd", "odd.id", "auto_unit_daily_schedule.odd_id")
+            ->leftJoin("event", "event.matchId", "match.id")
+            ->leftJoin("distribution", function($query) {
+                $query->on("distribution.eventId", "=", "event.id");
+                $query->on("distribution.siteId", "=", "auto_unit_daily_schedule.siteId");
+                $query->on("distribution.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
+                $query->on("distribution.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
+            })
             ->join("auto_unit_monthly_setting", function ($query) {
                 $query->on("auto_unit_monthly_setting.siteId", "=", "auto_unit_daily_schedule.siteId");
                 $query->on("auto_unit_monthly_setting.date", "=", "auto_unit_daily_schedule.date");

@@ -120,7 +120,7 @@ class Distribution extends Controller
                 // get events for package
                 $distributedEvents = \App\Distribution::select("distribution.*", "auto_unit_daily_schedule.is_from_admin_pool")
                     ->join("event", "event.id", "distribution.eventId")
-                    ->join("match", "match.id", "event.matchId")
+                    ->leftJoin("match", "match.id", "event.matchId")
                     ->leftJoin("auto_unit_daily_schedule", function($query) {
                         $query->on("auto_unit_daily_schedule.match_id", "match.primaryId");
                         $query->on("auto_unit_daily_schedule.siteId", "distribution.siteId");
@@ -1301,7 +1301,15 @@ class Distribution extends Controller
             \App\SubscriptionTipHistory::where('eventId', $distribution->eventId)
                 ->where('siteId', $distribution->siteId)
                 ->delete();
+            
+            
 
+            \App\Models\AutoUnit\DailySchedule::join("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
+                ->join("event", "event.matchId", "match.id")
+                ->join("distribution", "distribution.eventId", "event.id")
+                ->where("distribution.id", "=", $distribution->id)
+                ->delete();
+                
             if (! \App\ArchivePublishStatus::where('siteId' , $distribution['siteId'])->where('type' , 'archiveBig')->count())
                 \App\ArchivePublishStatus::create([
                     'siteId' => $distribution['siteId'],
@@ -1314,9 +1322,19 @@ class Distribution extends Controller
                     'type'   => 'archiveHome'
                 ]);
 
-            $distribution->delete();
+            \App\Distribution::where("eventId", "=", $distribution->eventId)
+                ->where("provider", "=", "autounit")
+                ->where("tipIdentifier", "=", $distribution->tipIdentifier)
+                ->delete();
+            $distributions = \App\Distribution::where("eventId", "=", $distribution->eventId)
+                ->get();
 
-            /* $distribution->delete(); */
+            // delete association if no event is associated with a site
+            if (!count($distributions)) {
+                \App\Association::where("eventId", "=", $distribution->eventId)
+                    ->where("provider", "=", "autounit")
+                    ->delete();
+            }
             $deleted++;
         }
 

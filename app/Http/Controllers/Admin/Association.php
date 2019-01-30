@@ -165,6 +165,7 @@ class Association extends Controller
             // 2 - inelegible
             if ($tipsDifference < 0) {
                 $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $site->name;
+                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
                 $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["eligible"] = true;
                 $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
                 $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
@@ -176,6 +177,7 @@ class Association extends Controller
                 ];
             } else {
                 $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $site->name;
+                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
                 $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["eligible"] = true;
                 $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
                 $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
@@ -188,7 +190,7 @@ class Association extends Controller
             }
         }
 
-        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section);
+        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section, $data['event']);
 
         if (!isset($data['sites'][0])) {
             $data['sites'][0] = [];
@@ -202,7 +204,7 @@ class Association extends Controller
         return $data;
     }
     
-    public static function getUnAvailablePackages($eligiblePackageIds, $association, $date, $isVip, $section) {
+    public static function getUnAvailablePackages($eligiblePackageIds, $association, $date, $isVip, $section, $event) {
         $data = [];
 
         $ineligiblePackages = \App\Package::select(
@@ -242,6 +244,7 @@ class Association extends Controller
 
             $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $p->siteName;
+            $data['sites'][0][$p->siteName]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $event->to_distribute;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["eligible"] = false;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [

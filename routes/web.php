@@ -713,57 +713,42 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $vip = 0;
 
         // get events for archive
-        $archiveEvents = \App\ArchiveBig::select(
-                "archive_big.*",
+        $manuallyAddedEvents = \App\Distribution::select(
+                "distribution.*",
+                "distribution.id AS distributionId",
                 "match.sites_distributed_counter",
-                "auto_unit_daily_schedule.invalid_matches",
-                "auto_unit_daily_schedule.status",
-                "auto_unit_daily_schedule.info",
                 "package.isVip"
             )
-            ->where('archive_big.siteId', $siteId)
-            ->join("event", "event.id", "archive_big.eventId")
-            ->join("match", "match.id", "event.matchId")
-            ->join("auto_unit_daily_schedule", function($join) {
-                $join->on("auto_unit_daily_schedule.match_id", "=", "match.primaryId")
-                    ->on("auto_unit_daily_schedule.siteId", "=", "archive_big.siteId");
+            ->join("event", "event.id", "distribution.eventId")
+            ->leftJoin("match", "match.id", "event.matchId")
+            ->leftJoin("package", function ($query) {
+                $query->on("package.siteId", "=", "distribution.siteId");
+                $query->on("package.tipIdentifier", "=", "distribution.tipIdentifier");
+                $query->on("package.tableIdentifier", "=", "distribution.tableIdentifier");
             })
-            ->join("package", function ($query) {
-                $query->on("package.siteId", "=", "auto_unit_daily_schedule.siteId");
-                $query->on("package.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
-                $query->on("package.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
-            })
-            ->where('archive_big.tableIdentifier', $tableIdentifier)
-            ->where('archive_big.systemDate', '>=', $date . '-01')
-            ->where('archive_big.systemDate', '<=', $date . '-31')
-            ->groupBy("archive_big.id")
+            ->where('distribution.siteId', $siteId)
+            ->where('distribution.systemDate', '>=', $date . '-01')
+            ->where('distribution.systemDate', '<=', $date . '-31')
+            ->where('distribution.provider', "!=", "autounit")
+            ->where('distribution.tableIdentifier', $tableIdentifier)
+            ->groupBy("distribution.id")
             ->get()
             ->toArray();
 
-        foreach ($archiveEvents as $k => $v) {
-            $archiveEvents[$k]['isRealUser'] = false;
-            $archiveEvents[$k]['isNoUser']   = true;
-            $archiveEvents[$k]['isAutoUnit'] = false;
+        foreach ($manuallyAddedEvents as $k => $v) {
+            $manuallyAddedEvents[$k]['isRealUser'] = false;
+            $manuallyAddedEvents[$k]['isNoUser']   = true;
+            $manuallyAddedEvents[$k]['isAutoUnit'] = false;
 
             // check if event was for real users
             if (\App\SubscriptionTipHistory::where('eventId', $v['eventId'])->where('siteId', $v['siteId'])->count()) {
-                $archiveEvents[$k]['isRealUser'] = true;
-                $archiveEvents[$k]['isNoUser']   = false;
-            }
-
-            if ($archiveEvents[$k]['isNoUser']) {
-                if ($v['provider'] == 'autounit') {
-                    $archiveEvents[$k]['isNoUser']   = false;
-                    $archiveEvents[$k]['isAutoUnit'] = true;
-                }
+                $manuallyAddedEvents[$k]['isRealUser'] = true;
+                $manuallyAddedEvents[$k]['isNoUser']   = false;
             }
 
             // we must move the flag for table type fron association to archive
-            $archiveEvents[$k]['isPosted']    = true;
-            $archiveEvents[$k]['isScheduled'] = false;
-            $archiveEvents[$k]['invalidMatches'] = json_decode($v["invalid_matches"]);
-            $archiveEvents[$k]['status'] = $v["status"];
-            $archiveEvents[$k]['info'] = $v["info"];
+            $manuallyAddedEvents[$k]['isPosted']    = true;
+            $manuallyAddedEvents[$k]['isScheduled'] = false;
 
             if ($v['statusId'] == 1)
                 $win++;
@@ -781,13 +766,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             }
         }
 
-        usort($archiveEvents, function($a, $b) {
+        usort($manuallyAddedEvents, function($a, $b) {
             return strtotime($b['systemDate']) - strtotime($a['systemDate']);
         });
-
-        $minDate = null;
-        if (!empty($archiveEvents))
-            $minDate = $archiveEvents[0]['systemDate'];
 
         // get scheduled events
         $scheduledEvents = \App\Models\AutoUnit\DailySchedule::select(
@@ -850,14 +831,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $scheduledEvents[$k]['isPosted']    = false;
             $scheduledEvents[$k]['isScheduled'] = true;
             $scheduledEvents[$k]['invalidMatches'] = json_decode($v["invalid_matches"]);
-            
-            // unset oldest scheduled events
-            if ($minDate != null) {
-                if (strtotime($minDate) >= strtotime($v['systemDate'])) {
-                    unset($scheduledEvents[$k]);
-                    continue;
-                }
-            }
 
             if ($v['statusId'] == 1)
                 $win++;
@@ -875,7 +848,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             }
         }
 
-        $allEvents = array_merge($scheduledEvents, $archiveEvents);
+        $allEvents = array_merge($manuallyAddedEvents, $scheduledEvents);
 
         usort($allEvents, function($a, $b) {
             return strtotime($b['systemDate']) - strtotime($a['systemDate']);

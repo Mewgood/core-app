@@ -634,7 +634,10 @@ class AutoUnitAddEvents extends CronCommand
     private function getAutoUnitTodaySchedule($scheduleId) : array
     {
         return \App\Models\AutoUnit\DailySchedule::where('systemDate', $this->systemDate)
+            ->select("auto_unit_daily_schedule.*")
+            ->join("site", "site.id", "=", "auto_unit_daily_schedule.siteId")
             ->where('status', '!=', 'success')
+            ->where("paused_autounit", "=", 0)
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
             })
@@ -645,8 +648,11 @@ class AutoUnitAddEvents extends CronCommand
     private function getAutoUnitFilteredSchedule($date, $matchId, $scheduleId) : array
     {
         return \App\Models\AutoUnit\DailySchedule::where('systemDate', $date)
+            ->select("auto_unit_daily_schedule.*")
+            ->join("site", "site.id", "=", "auto_unit_daily_schedule.siteId")
             ->where('status', '=', 'waiting')
             ->where('match_id', '=', $matchId)
+            ->where("paused_autounit", "=", 0)
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
             })

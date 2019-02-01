@@ -24,6 +24,7 @@ class Site extends Model {
         'dateFormat',
         'isConnect',
         'token',
+        'paused_autounit'
     ];
 
     public static function getCMSSites() {

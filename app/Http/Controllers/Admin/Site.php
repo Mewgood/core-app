@@ -144,7 +144,7 @@ class Site extends Controller
     // @return array of objects
     public function getIdsAndNames()
     {
-        return \App\Site::select('id', 'name')->get();
+        return \App\Site::select('id', 'name', 'paused_autounit')->get();
     }
 
     /*

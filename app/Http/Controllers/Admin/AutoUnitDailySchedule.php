@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Site;
 
 use App\Models\AutoUnit\DailySchedule;
 
@@ -25,5 +26,13 @@ class AutoUnitDailySchedule extends Controller
     {
         $statistics = DailySchedule::getAutoUnitSiteStatistics();
         return response($statistics, 200);
+    }
+    
+    public function toggleState(Request $request)
+    {
+        $site = Site::find($request->site);
+        $site->paused_autounit = !$request->state;
+        $site->update();
+        return response($site, 200);
     }
 }

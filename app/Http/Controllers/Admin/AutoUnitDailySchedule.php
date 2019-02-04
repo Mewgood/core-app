@@ -32,6 +32,7 @@ class AutoUnitDailySchedule extends Controller
     {
         $site = Site::find($request->site);
         $site->paused_autounit = !$request->state;
+        $site->manual_pause = $request->manual_pause;
         $site->update();
         return response($site, 200);
     }

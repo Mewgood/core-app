@@ -144,6 +144,14 @@ class Subscription extends Controller
         $packageInstance = new \App\Http\Controllers\Admin\Package();
         $packageInstance->evaluateAndChangeSection($packageId);
 
+        // pause the autounit of the site that received a subscription
+        $site = \App\Site::find($siteId);
+        if ($site) {
+            if ($site->paused_autounit && !$site->manual_pause) {
+                $site->paused_autounit = 1;
+            }
+            $site->save();
+        }
         return [
             'type' => 'success',
             'message' => 'Subscription was created with success!',

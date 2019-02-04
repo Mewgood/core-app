@@ -123,7 +123,7 @@ class SetResultAndStatus extends CronCommand
                 $autoUnitCron->fire($match);                
 
                 $info['processed']++;
-                /* echo $score; */
+                echo $score;
             }
         }
 

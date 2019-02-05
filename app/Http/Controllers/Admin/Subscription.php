@@ -90,17 +90,28 @@ class Subscription extends Controller
         $customerEmail = $r->input('customerEmail');
         $status = 'active';
 
+        
         // check if package exist
         $package = \App\Package::find($packageId);
         if (!$packageId)
             return [
                 'type' => 'error',
-                'mesasge' => 'Package not exist anymore'
+                'message' => 'Package not exist anymore'
             ];
 
         // get siteId
         $sitePackage = \App\SitePackage::where('packageId', $packageId)->first();
         $siteId = $sitePackage->siteId;
+        $publishedEvents = \App\Distribution::where("siteId", "=", $siteId)
+                ->where("systemDate", "=", $dateStart)
+                ->where("isPublish", "=", 1)
+                ->get();
+        if (!$publishedEvents->isEmpty()) {
+            return [
+                'type' => 'error',
+                'message' => 'Events are already published for this date'
+            ];
+        }
 
         // get customer
         $customer = \App\Customer::where('email', $customerEmail)->first();
@@ -143,11 +154,26 @@ class Subscription extends Controller
         // move package (packages group in real users if is possible)
         $packageInstance = new \App\Http\Controllers\Admin\Package();
         $packageInstance->evaluateAndChangeSection($packageId);
+        
+        $today = gmdate("Y-m-d");
+        if ($dateStart == $today) {
+            // Delete AU events
+             \App\Distribution::where("siteId", "=", $siteId)
+                ->where("systemDate", "=", $today)
+                ->where("provider", "=", "autounit")
+                ->delete();
+            \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
+                ->where("systemDate", "=", $today)
+                ->delete();
+        }
 
         // pause the autounit of the site that received a subscription
         $site = \App\Site::find($siteId);
         if ($site) {
-            if ($site->paused_autounit && !$site->manual_pause) {
+            if (!$site->paused_autounit && $site->manual_pause) {
+                $site->manual_pause = 0;
+            }
+            if (!$site->manual_pause) {
                 $site->paused_autounit = 1;
             }
             $site->save();

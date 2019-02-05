@@ -11,7 +11,6 @@ class ProcessDaysSubscription extends Controller
 
     public function __construct()
     {
-        dd("intra");
         // get gmdate -1 day
         $date = gmdate('Y-m-d', strtotime('-1day'));
 
@@ -183,11 +182,14 @@ class ProcessDaysSubscription extends Controller
         $today = gmdate("Y-m-d");
 
         foreach ($sites as $site) {
-            $subscriptions = \App\Subscription::where('status', 'active')
-                ->where('dateEnd', '>=', $today)
+            $subscriptions = \App\Subscription::where(function($query) {
+                    $query->where("status", "=", "waiting")
+                        ->orWhere("status", "=", "active");
+                })
+                ->whereRaw('STR_TO_DATE(subscription.dateEnd, "%Y-%m-%d") >= STR_TO_DATE(' . "'2019-02-07'" . ', "%Y-%m-%d")')
                 ->where("siteId", "=", $site->id)
                 ->count();
-            if (!$subscriptions) {
+            if ($subscriptions == 0) {
                 if ($site->paused_autounit && !$site->manual_pause) {
                     $site->paused_autounit = 0;
                     $site->save();

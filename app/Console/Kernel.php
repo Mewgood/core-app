@@ -9,6 +9,7 @@ use App\Console\Commands\SetResultAndStatus;
 use App\Console\Commands\PublishArchives;
 use App\Console\Commands\AutoUnitAddEvents;
 use App\Console\Commands\SendMail;
+use App\Console\Commands\ProcessSubscriptions;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
@@ -27,7 +28,8 @@ class Kernel extends ConsoleKernel
         SetResultAndStatus::class,
         PublishArchives::class,
         AutoUnitAddEvents::class,
-        SendMail::class
+        SendMail::class,
+        ProcessSubscriptions::class
     ];
 
     /**
@@ -39,6 +41,10 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $filePath = storage_path('logs/cron.log');
+
+        // refactor the current cronjob to run from lumen jobs?
+        $schedule->command("subscription:process");
+
         // process day subscriptions at end of day
         //   - if no event add noTip
         //   - archive subscriptions

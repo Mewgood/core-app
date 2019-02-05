@@ -11,6 +11,7 @@ class ProcessDaysSubscription extends Controller
 
     public function __construct()
     {
+        dd("intra");
         // get gmdate -1 day
         $date = gmdate('Y-m-d', strtotime('-1day'));
 
@@ -142,6 +143,7 @@ class ProcessDaysSubscription extends Controller
             $packageInstance = new \App\Http\Controllers\Admin\Package();
             $packageInstance->evaluateAndChangeSection($package->id);
         }
+        $this->processAutounitPauseState();
     }
 
     // @param \App\Subscription $subscription
@@ -172,6 +174,25 @@ class ProcessDaysSubscription extends Controller
         if (strtotime($subscription->dateEnd) <= strtotime($date)) {
             $subscription->status = 'archived';
             $subscription->update();
+        }
+    }
+    
+    private function processAutounitPauseState()
+    {
+        $sites = \App\Site::all();
+        $today = gmdate("Y-m-d");
+
+        foreach ($sites as $site) {
+            $subscriptions = \App\Subscription::where('status', 'active')
+                ->where('dateEnd', '>=', $today)
+                ->where("siteId", "=", $site->id)
+                ->count();
+            if (!$subscriptions) {
+                if ($site->paused_autounit && !$site->manual_pause) {
+                    $site->paused_autounit = 0;
+                    $site->save();
+                }
+            }
         }
     }
 }

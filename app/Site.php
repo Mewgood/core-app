@@ -23,8 +23,7 @@ class Site extends Model {
         'imapEncryption',
         'dateFormat',
         'isConnect',
-        'token',
-        'paused_autounit'
+        'token'
     ];
 
     public static function getCMSSites() {

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Site;
 
-use App\Models\AutoUnit\DailySchedule;
+use App\Package;
 
 class AutoUnitDailySchedule extends Controller
 {
@@ -30,10 +30,25 @@ class AutoUnitDailySchedule extends Controller
     
     public function toggleState(Request $request)
     {
-        $site = Site::find($request->site);
-        $site->paused_autounit = !$request->state;
-        $site->manual_pause = $request->manual_pause;
-        $site->update();
-        return response($site, 200);
+        Package::when($request->tipIdentifier, function($query) {
+                return $query->where("tipIdentifier", "=", $request->tipIdentifier);
+            })
+            ->when($request->site, function($query) {
+                return $query->where("siteId", "=", $request->site);
+            })
+            ->update(["paused_autounit" => !$request->state, "manual_pause" => $request->manual_pause]);
+
+        $package = Package::when($request->tipIdentifier, function($query) {
+                return $query->where("tipIdentifier", "=", $request->tipIdentifier);
+            })
+            ->when($request->site, function($query) {
+                return $query->where("siteId", "=", $request->site);
+            })
+            ->first();
+        if (!$request->tipIdentifier) {
+            \App\Models\Config::where("name", "=", "autounit_all_state")->update(["value" => !$request->state]);
+        }
+        
+        return response($package, 200);
     }
 }

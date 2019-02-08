@@ -23,12 +23,14 @@ class DatabaseSeeder extends Seeder
             $this->call('UserTableSeeder');
             $this->call('PackageSectionSeeder');
             $this->call('ArchiveHomeConfTableSeeder');
+            $this->call('ConfigsTableSeeder');
         }
 
         if (getenv('APP_ENV') === 'production') {
             $this->call('AppResultStatusTableSeeder');
             $this->call('PredictionTableSeeder');
             $this->call('UserTableSeeder');
+            $this->call('ConfigsTableSeeder');
         }
     }
 }

@@ -42,17 +42,20 @@ class Kernel extends ConsoleKernel
     {
         $filePath = storage_path('logs/cron.log');
 
-        // refactor the current cronjob to run from lumen jobs?
-        $schedule->command("subscription:process");
-
         // process day subscriptions at end of day
         //   - if no event add noTip
         //   - archive subscriptions
         //   - activate waiting subscriptions
         //   - set package section
+        $schedule->command("subscription:process")
+            ->timezone('GMT')
+            ->dailyAt('00:01');
+
+        /*
         $schedule->call(function() {
             new \App\Http\Controllers\Cron\ProcessDaysSubscription();
         })->timezone('GMT')->dailyAt('00:01');
+        */
 
         // schedule the emails
         $schedule->command('distribution:pre-send')

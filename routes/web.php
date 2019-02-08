@@ -494,6 +494,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                     }
                 }
 
+                $schedule->paused = $package->paused_autounit;
+                $schedule->manual_pause = $package->manual_pause;
                 $data[$key] = $schedule;
                 $data[$key]->packages = $packageNames;
 

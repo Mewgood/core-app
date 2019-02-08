@@ -29,6 +29,8 @@ class Package extends Model {
         'fromName',
         'subject',
         'template',
+        'paused_autounit',
+        'manual_pause'
     ];
 
 //    protected $hidden = [ ‘password’ ];

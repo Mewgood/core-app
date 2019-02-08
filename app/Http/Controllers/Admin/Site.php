@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class Site extends Controller
 {
@@ -144,7 +145,16 @@ class Site extends Controller
     // @return array of objects
     public function getIdsAndNames()
     {
-        return \App\Site::select('id', 'name', 'paused_autounit')->get();
+        $data = \App\Site::select('site.id', 'site.name')
+            ->join("package", "package.siteId", "site.id")
+            ->groupBy("site.id")
+            ->get()
+            ->toArray();
+            
+        $sum = \App\Site::join("package", "package.siteId", "site.id")
+            ->sum("paused_autounit");
+        $data["all_state"] = \App\Models\Config::select("value")->where("name", "=", "autounit_all_state")->first();
+        return $data;
     }
 
     /*

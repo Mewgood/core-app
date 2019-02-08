@@ -159,11 +159,11 @@ class Subscription extends Controller
         if ($dateStart == $today) {
             // Delete AU events
              \App\Distribution::where("siteId", "=", $siteId)
-                ->where("systemDate", "=", $today)
+                ->whereBetween("systemDate", [$dateStart, $dateEnd])
                 ->where("provider", "=", "autounit")
                 ->delete();
             \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
-                ->where("systemDate", "=", $today)
+                ->whereBetween("systemDate", [$dateStart, $dateEnd])
                 ->delete();
         }
 

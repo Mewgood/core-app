@@ -187,6 +187,7 @@ class ProcessSubscriptions extends CronCommand
             ->groupBy("package.id")
             ->get();
 
+        $today = gmdate("Y-m-d");
         foreach ($packages as $package) {
             if (
                 $package->subscriptionId == null || 
@@ -200,6 +201,7 @@ class ProcessSubscriptions extends CronCommand
                 \App\Models\AutoUnit\DailySchedule::where("tipIdentifier", "=", $package->tipIdentifier)
                     ->where("tableIdentifier", "=", $package->tableIdentifier)
                     ->where("siteId", "=", $package->siteId)
+                    ->where("systemDate", "=", $today)
                     ->delete();
             }
         }

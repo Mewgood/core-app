@@ -7,6 +7,7 @@ class Package extends Model {
     protected $table = 'package';
 
     protected $fillable = [
+        'id',
         'siteId',
         'name',
         'identifier',

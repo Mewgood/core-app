@@ -156,28 +156,30 @@ class Subscription extends Controller
         $packageInstance->evaluateAndChangeSection($packageId);
         
         $today = gmdate("Y-m-d");
-        if ($dateStart == $today) {
-            // Delete AU events
-             \App\Distribution::where("siteId", "=", $siteId)
-                ->whereBetween("systemDate", [$dateStart, $dateEnd])
-                ->where("provider", "=", "autounit")
-                ->delete();
+        // Delete AU events
+         \App\Distribution::where("siteId", "=", $siteId)
+            ->whereBetween("systemDate", [$dateStart, $dateEnd])
+            ->where("provider", "=", "autounit")
+            ->delete();
+        if ($dateStart && $dateEnd) {
             \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
                 ->whereBetween("systemDate", [$dateStart, $dateEnd])
+                ->delete();
+        } else {
+            \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
+                ->where("systemDate", $today)
                 ->delete();
         }
 
         // pause the autounit of the site that received a subscription
-        $site = \App\Site::find($siteId);
-        if ($site) {
-            if (!$site->paused_autounit && $site->manual_pause) {
-                $site->manual_pause = 0;
-            }
-            if (!$site->manual_pause) {
-                $site->paused_autounit = 1;
-            }
-            $site->save();
+        if (!$package->paused_autounit && $package->manual_pause) {
+            $package->manual_pause = 0;
         }
+        if (!$package->manual_pause) {
+            $package->paused_autounit = 1;
+        }
+        $package->save();
+
         return [
             'type' => 'success',
             'message' => 'Subscription was created with success!',

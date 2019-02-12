@@ -174,22 +174,33 @@ class ProcessSubscriptions extends CronCommand
     
     private function processAutounitPauseState()
     {
-        $sites = \App\Site::all();
-        $today = gmdate("Y-m-d");
+        $packages = \App\Package::select(
+                "package.id", 
+                "package.siteId",
+                "package.paused_autounit",
+                "package.manual_pause",
+                "subscription.id AS subscriptionId",
+                "subscription.status AS subscriptionStatus"
+            )
+            ->leftJoin("subscription", "subscription.packageId", "package.id")
+            ->whereRaw("subscription.id = (SELECT MAX(subscription.id) FROM subscription WHERE subscription.packageId = package.id)")
+            ->groupBy("package.id")
+            ->get();
 
-        foreach ($sites as $site) {
-            $subscriptions = \App\Subscription::where(function($query) {
-                    $query->where("status", "=", "waiting")
-                        ->orWhere("status", "=", "active");
-                })
-                ->whereRaw('STR_TO_DATE(subscription.dateEnd, "%Y-%m-%d") >= STR_TO_DATE(' . "'2019-02-07'" . ', "%Y-%m-%d")')
-                ->where("siteId", "=", $site->id)
-                ->count();
-            if ($subscriptions == 0) {
-                if ($site->paused_autounit && !$site->manual_pause) {
-                    $site->paused_autounit = 0;
-                    $site->save();
-                }
+        foreach ($packages as $package) {
+            if (
+                $package->subscriptionId == null || 
+                ($package->paused_autounit && 
+                !$package->manual_pause && 
+                $package->subscriptionStatus == "archived")
+            ) {
+                $package->paused_autounit = 0;
+                $package->save();
+            } else {
+                \App\Models\AutoUnit\DailySchedule::where("tipIdentifier", "=", $package->tipIdentifier)
+                    ->where("tableIdentifier", "=", $package->tableIdentifier)
+                    ->where("siteId", "=", $package->siteId)
+                    ->delete();
             }
         }
     }

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Site;
 
 use App\Package;
+use App\Models\AutoUnit\DailySchedule;
 
 class AutoUnitDailySchedule extends Controller
 {

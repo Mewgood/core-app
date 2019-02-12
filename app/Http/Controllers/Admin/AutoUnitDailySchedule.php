@@ -30,19 +30,19 @@ class AutoUnitDailySchedule extends Controller
     
     public function toggleState(Request $request)
     {
-        Package::when($request->tipIdentifier, function($query) {
-                return $query->where("tipIdentifier", "=", $request->tipIdentifier);
+        Package::when($request->tipIdentifier, function($query, $tipIdentifier) {
+                return $query->where("tipIdentifier", "=", $tipIdentifier);
             })
-            ->when($request->site, function($query) {
-                return $query->where("siteId", "=", $request->site);
+            ->when($request->site, function($query, $site) {
+                return $query->where("siteId", "=", $site);
             })
             ->update(["paused_autounit" => !$request->state, "manual_pause" => $request->manual_pause]);
 
-        $package = Package::when($request->tipIdentifier, function($query) {
-                return $query->where("tipIdentifier", "=", $request->tipIdentifier);
+        $package = Package::when($request->tipIdentifier, function($query, $tipIdentifier) {
+                return $query->where("tipIdentifier", "=", $tipIdentifier);
             })
-            ->when($request->site, function($query) {
-                return $query->where("siteId", "=", $request->site);
+            ->when($request->site, function($query, $site) {
+                return $query->where("siteId", "=", $site);
             })
             ->first();
         if (!$request->tipIdentifier) {

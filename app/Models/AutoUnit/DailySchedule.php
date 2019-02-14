@@ -77,48 +77,7 @@ class DailySchedule extends Model {
         }
         return $data;
     }
-/*
-    public static function getAutoUnitSiteStatistics()
-    {
-        $data = Site::select(
-                "site.id",
-                "site.name",
-                "auto_unit_monthly_setting.date",
-                DB::raw("
-                    (
-                        SELECT COUNT(DISTINCT pk.tableIdentifier)
-                        FROM package pk
-                        WHERE pk.siteId = site.id
-                    ) AS siteTablesCounter"
-                ),
-                DB::raw("
-                    (
-                        SELECT COUNT(DISTINCT aums.tableIdentifier)
-                        FROM auto_unit_monthly_setting aums
-                        WHERE aums.siteId = site.id
-                        AND DATE_FORMAT(STR_TO_DATE(aums.date, '%Y-%m'), '%Y-%m') = DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, '%Y-%m'), '%Y-%m')
-                    ) AS siteConfiguredTablesCounter"
-                ),
-                DB::raw("
-                    (CASE
-                        WHEN (SELECT siteTablesCounter) = (SELECT siteConfiguredTablesCounter) THEN 1
-                        WHEN (SELECT siteConfiguredTablesCounter) = 0 THEN NULL
-                        ELSE 2
-                    END) AS configurationStatus"
-                )
-            )
-            ->join("package", "package.siteId", "=", "site.id")
-            ->leftJoin("auto_unit_monthly_setting", function ($query) {
-                $query->on("auto_unit_monthly_setting.siteId", "=", "site.id");
-                $query->whereRaw('DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, "%Y-%m"), "%Y-%m") >= DATE_FORMAT(CURDATE(), "%Y-%m")');
-            })
-            ->groupBy("date", "site.id")
-            ->get()
-            ->toArray();
-        $data = self::formatAutoUnitSiteStatisticsData($data);
-        return $data;
-    }
-*/
+
     public static function getAutoUnitSiteStatistics()
     {
         $data = Site::select(

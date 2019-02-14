@@ -135,7 +135,7 @@ class DailySchedule extends Model {
                         FROM auto_unit_monthly_setting aums
                         WHERE aums.siteId = site.id
                         AND DATE_FORMAT(STR_TO_DATE(aums.date, '%Y-%m'), '%Y-%m') = DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, '%Y-%m'), '%Y-%m')
-                        AND auto_unit_monthly_setting.tipIdentifier = package.tipIdentifier
+                        AND aums.tipIdentifier = package.tipIdentifier
                     ) AS siteConfiguredTablesCounter"
                 ),
                 DB::raw("

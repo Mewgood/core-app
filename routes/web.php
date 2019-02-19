@@ -88,6 +88,21 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         return "Autounit was runn with success!";
     });
     
+    // reset autounits
+    $app->get('/autounit-reset', function () use ($app) {
+        Artisan::call('autounit:reset');
+        return "Autounit was reset!";
+    });
+
+    $app->get('/autounit-reset/{site}', function ($site) use ($app) {
+        Artisan::call('autounit:reset', ["--site" => $site]);
+        return "Autounit was reset!";
+    });
+    $app->get('/autounit-reset/{site}/{table}', function ($site, $table) use ($app) {
+        Artisan::call('autounit:reset', ["--site" => $site, "--table" => $table]);
+        return "Autounit was reset!";
+    });
+    
 	// Get all Countries 
 	$app->get('/leagues/get-all-countries', 'Admin\Leagues@getAllCountries');
 	// Get all Leagues for a given country  

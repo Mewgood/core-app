@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 class AutoUnitAddEvents extends CronCommand
 {
-    protected $name = 'autounit:add-events {--site} {--table}';
+    protected $name = 'autounit:add-events';
     protected $signature = 'autounit:add-events {--site=} {--table=}';
     protected $description = 'Add events according to autounit schedule.';
 
@@ -62,6 +62,7 @@ class AutoUnitAddEvents extends CronCommand
                         ->where('tipIdentifier', $schedule['tipIdentifier'])
                         ->where('tableIdentifier', $schedule['tableIdentifier'])
                         ->first();
+
             if ($package && $package->paused_autounit) {
                 continue;
             }

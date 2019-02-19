@@ -10,6 +10,7 @@ use App\Console\Commands\PublishArchives;
 use App\Console\Commands\AutoUnitAddEvents;
 use App\Console\Commands\SendMail;
 use App\Console\Commands\ProcessSubscriptions;
+use App\Console\Commands\ResetAutounit;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
@@ -29,7 +30,8 @@ class Kernel extends ConsoleKernel
         PublishArchives::class,
         AutoUnitAddEvents::class,
         SendMail::class,
-        ProcessSubscriptions::class
+        ProcessSubscriptions::class,
+        ResetAutounit::class
     ];
 
     /**

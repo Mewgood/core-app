@@ -43,12 +43,6 @@ use Illuminate\Support\Facades\Artisan;
 /*     return "Application was reset!"; */
 /* }); */
 
-// run autounit from url.
-$app->get('/autounit', function () use ($app) {
-    Artisan::call('autounit:add-events');
-    return "Autounit was runn with success!";
-});
-
 // import events
 $app->get('/import-events', function () use ($app) {
     new \App\Http\Controllers\Cron\PortalNewEvents();
@@ -79,6 +73,21 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 	 * Routes for the Leagues controller 
 	 */
 	
+    // run autounit from url.
+    $app->get('/autounit', function () use ($app) {
+        Artisan::call('autounit:add-events');
+        return "Autounit was runn with success!";
+    });
+
+    $app->get('/autounit/{site}', function ($site) use ($app) {
+        Artisan::call('autounit:add-events', ["--site" => $site]);
+        return "Autounit was runn with success!";
+    });
+    $app->get('/autounit/{site}/{table}', function ($site, $table) use ($app) {
+        Artisan::call('autounit:add-events', ["--site" => $site, "--table" => $table]);
+        return "Autounit was runn with success!";
+    });
+    
 	// Get all Countries 
 	$app->get('/leagues/get-all-countries', 'Admin\Leagues@getAllCountries');
 	// Get all Leagues for a given country  

@@ -171,8 +171,8 @@ class DailySchedule extends Model {
                 }
                 $firstIteration = false;
             }
-            $item["tipsLeft"] = Site::getLastSubscription($item["id"])->tipsLeft;
-            $item["lastSubscription"] = Site::getLastSubscription($item["id"])->dateEnd;
+            $item["tipsLeft"] = Site::getLastSubscription($item["siteId"])->tipsLeft;
+            $item["lastSubscription"] = Site::getLastSubscription($item["siteId"])->dateEnd;
 
             // overwrite it if the autounit is set for that month
             if ($hasSubscription) {

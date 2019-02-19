@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\DB;
 
 class AutoUnitAddEvents extends CronCommand
 {
-    protected $name = 'autounit:add-events';
+    protected $name = 'autounit:add-events {--site} {--table}';
+    protected $signature = 'autounit:add-events {--site=} {--table=}';
     protected $description = 'Add events according to autounit schedule.';
 
     private $systemDate;
@@ -25,7 +26,6 @@ class AutoUnitAddEvents extends CronCommand
     public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null)
     {
         //$cron = $this->startCron();
-
         if ($matchWithResult !== null) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
             $this->systemDate = gmdate('Y-m-d', strtotime($matchWithResult->eventDate));
@@ -62,7 +62,7 @@ class AutoUnitAddEvents extends CronCommand
                         ->where('tipIdentifier', $schedule['tipIdentifier'])
                         ->where('tableIdentifier', $schedule['tableIdentifier'])
                         ->first();
-            if ($package->paused_autounit) {
+            if ($package && $package->paused_autounit) {
                 continue;
             }
             $eventExists = \App\Distribution::where('siteId', $schedule['siteId'])
@@ -645,8 +645,15 @@ class AutoUnitAddEvents extends CronCommand
             )
             ->join("site", "site.id", "=", "auto_unit_daily_schedule.siteId")
             ->where('status', '!=', 'success')
+            ->whereNull('match_id')
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
+            })
+            ->when($this->option("site"), function($query) {
+                $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
+            })
+            ->when($this->option("table"), function($query) {
+                $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
             ->get()
             ->toArray();
@@ -663,6 +670,12 @@ class AutoUnitAddEvents extends CronCommand
             ->where('match_id', '=', $matchId)
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
+            })
+            ->when($this->option("site"), function($query) {
+                $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
+            })
+            ->when($this->option("table"), function($query) {
+                $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
             ->get()
             ->toArray();

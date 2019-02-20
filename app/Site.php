@@ -37,10 +37,7 @@ class Site extends Model {
     {
         $data = Site::join("subscription", "subscription.siteId", "=", "site.id")
             ->where("site.id", "=", $site)
-            ->where(function ($query) {
-                $query->whereRaw("DATE_FORMAT(subscription.dateEnd, '%Y-%m-%d') >= CURDATE()")
-                    ->orWhere("subscription.tipsLeft", ">", 0);
-            })
+            ->where("status", "!=", "archived")
             ->exists();
         return $data;
     }

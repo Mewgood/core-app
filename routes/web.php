@@ -758,7 +758,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->where('distribution.systemDate', '<=', $date . '-31')
             ->where('distribution.provider', "!=", "autounit")
             ->where('distribution.tableIdentifier', $tableIdentifier)
-            ->groupBy("distribution.id")
+            ->groupBy("distribution.associationId")
             ->get()
             ->toArray();
 

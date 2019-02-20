@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AssociationModel;
 use Illuminate\Http\Request;
+use App\Models\AutoUnit\MonthlySetting;
+use App\Models\AutoUnit\DailySchedule;
 
 class Association extends Controller
 {
@@ -79,14 +81,13 @@ class Association extends Controller
             ->where('section', $section)
             ->where('systemDate', $date)
             ->get();
-            
+        
         $packagesIds = [];
         foreach ($packageSection as $p)
             $packagesIds[] = $p->packageId;
 
         // only vip or normal package according to table
         foreach ($packagesIds as $k => $id) {
-
             // table is vip exclude normal packages
             if ($table == "ruv" || $table == "nuv") {
                 $isVip = 1;
@@ -140,6 +141,11 @@ class Association extends Controller
         $keys = [];
         $increments = 0;
         $packages = \App\Package::whereIn('id', $packagesIds)->get();
+        $todayYM = gmdate("Y-m");
+        $todayYMD = gmdate("Y-m-d");
+        
+        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section, $data['event']);
+        
         foreach ($packages as $p) {
 
             $site = \App\Site::find($p->siteId);
@@ -159,38 +165,58 @@ class Association extends Controller
                 ->where('systemDate', $date)
                 ->count();
             $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
+            
+            if ($section == "nu") {
+                $autounit = MonthlySetting::where("siteId", "=", $p->siteId)
+                    ->where("tipIdentifier", "=", $p->tipIdentifier)
+                    ->where("tableIdentifier", "=", $p->tableIdentifier)
+                    ->where("date", "=", $todayYM)
+                    ->first();
 
+                if (
+                    $autounit &&
+                    (float)$data['event']->odd >= (float)$autounit->minOdd && 
+                    (float)$data['event']->odd <= (float)$autounit->maxOdd
+                ) {
+                    // eligible
+                    $autounitMatchSet = DailySchedule::where("systemDate", "=", $todayYMD)
+                        ->where("siteId", "=", $p->siteId)
+                        ->where("tipIdentifier", "=", $p->tipIdentifier)
+                        ->where("tableIdentifier", "=", $p->tableIdentifier)
+                        ->whereNotNull("match_id")
+                        ->first();
+
+                    if ($autounitMatchSet || $tipsDifference >= 0) {
+                        if ($p->paused_autounit && $p->manual_pause) {
+                            $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                        } else {
+                            $this->mapAssociationModalData($data, 3, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                        }
+                    } else {
+                        if ($p->paused_autounit && $p->manual_pause) {
+                            $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                        } else {
+                            $this->mapAssociationModalData($data, 4, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                        }
+                    }
+                } else {
+                    // not eligible
+                    $this->mapAssociationModalData($data, 2, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, false);
+                }
+            }
             // 0 - unfilled
             // 1 - filled
             // 2 - inelegible
-            if ($tipsDifference < 0) {
-                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $site->name;
-                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
-                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["eligible"] = true;
-                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
-                $data['sites'][0][$site->name]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'tipsPerDay' => $p->tipsPerDay,
-                    'eventIsAssociated' => $distributionExists,
-                    'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
-                ];
-            } else {
-                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $site->name;
-                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
-                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["eligible"] = true;
-                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
-                $data['sites'][1][$site->name]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'tipsPerDay' => $p->tipsPerDay,
-                    'eventIsAssociated' => $distributionExists,
-                    'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
-                ];
+            // 3 - AU filled
+            // 4 - AU unfilled
+            if ($section == "ru") {
+                if ($tipsDifference < 0) {
+                    $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                } else {
+                    $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                }
             }
         }
-
-        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section, $data['event']);
 
         if (!isset($data['sites'][0])) {
             $data['sites'][0] = [];
@@ -201,6 +227,15 @@ class Association extends Controller
         if (!isset($data['sites'][2])) {
             $data['sites'][2] = [];
         }
+        if ($section == "nu") {
+            if (!isset($data['sites'][3])) {
+                $data['sites'][3] = [];
+            }
+            if (!isset($data['sites'][4])) {
+                $data['sites'][4] = [];
+            }
+        }
+        
         return $data;
     }
     
@@ -423,5 +458,20 @@ class Association extends Controller
             "type" => "success",
             "message" => "Site with id: $id was deleted with success!"
         ]);
+    }
+    
+    private function mapAssociationModalData(&$data, $eligibilityCase, $site, $package, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, $eligible)
+    {
+        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["siteName"] = $site->name;
+        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
+        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["eligible"] = $eligible;
+        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["tipsDifference"] = $tipsDifference;
+        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]['packages'][] = [
+            'id' => $package->id,
+            'name' => $package->name,
+            'tipsPerDay' => $package->tipsPerDay,
+            'eventIsAssociated' => $distributionExists,
+            'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
+        ];
     }
 }

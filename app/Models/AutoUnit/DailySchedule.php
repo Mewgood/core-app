@@ -128,7 +128,7 @@ class DailySchedule extends Model {
             foreach ($dates as $date) {
                 $tempDate = gmdate('Y-m', strtotime('+ ' . $date . ' month'));
                 if (!isset($formatedData[$item["id"]][$tempDate])) {
-                    $hasSubscription = Site::hasSubscription($item["id"]); // RU || NU
+                    $hasSubscription = Site::hasSubscription($item["siteId"]); // RU || NU
                     $configurationStatus = false;
                     $temp = [
                         "date"  => $tempDate,

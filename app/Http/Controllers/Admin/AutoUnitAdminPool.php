@@ -38,4 +38,11 @@ class AutoUnitAdminPool extends Controller
         $matches = AdminPoolMatch::destroy($request->matches);
         return response($matches, 200);
     }
+    
+    public function getNotification()
+    {
+        $today = gmdate("Y-m-d");
+        $adminPool = AdminPool::where("pool_date", "=", $today)->count();
+        return response($adminPool, 200);
+    }
 }

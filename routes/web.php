@@ -549,6 +549,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         return $data;
     });
 
+    $app->get('/admin-pool/notification', 'Admin\AutoUnitAdminPool@getNotification');
     $app->post('/auto-unit/create-admin-pool', 'Admin\AutoUnitAdminPool@store');
     $app->post('/auto-unit/remove-admin-pool-matches', 'Admin\AutoUnitAdminPool@removeAdminPoolMatches');
     $app->post('/auto-unit/update-fields', 'Admin\AutoUnitDailySchedule@updateFields');

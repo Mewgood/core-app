@@ -364,7 +364,12 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $date = $r->input('date');
 
         // get distinct tip for database
-        $packages = \App\Package::distinct()
+        $packages = \App\Package::select(
+                "package.*",
+                "subscription_alerts.id AS alertId"
+            )
+            ->distinct()
+            ->leftJoin("subscription_alerts", "subscription_alerts.package_id", "package.id")
             ->where('siteId', $siteId)
             ->where('tableIdentifier', $tableIdentifier)
             ->groupBy("tipIdentifier")
@@ -520,6 +525,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
                 $schedule->paused = $package->paused_autounit;
                 $schedule->manual_pause = $package->manual_pause;
+                $schedule->hasAlert = $package->alertId ? true : false;
                 $data[$key] = $schedule;
                 $data[$key]->packages = $packageNames;
 
@@ -1214,6 +1220,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
     // delete a package
     $app->get("/package/delete/{id}", 'Admin\Package@destroy');
+    
+    $app->post("/package/clear-alerts", 'Admin\Package@clearAlerts');
 
     /*
      * Predictions
@@ -1314,6 +1322,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post('/subscription/edit/{id}', 'Admin\Subscription@update');
 
+    $app->get('/subscription-notification', 'Admin\Subscription@getNotifications');
+    
     /*
      * Package Prediction
      ---------------------------------------------------------------------*/

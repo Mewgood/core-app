@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use DB;
 
+use App\Models\SubscriptionAlert;
+
 class Package extends Controller
 {
 
@@ -250,5 +252,11 @@ class Package extends Controller
         }
 
         return;
+    }
+    
+    public function clearAlerts(Request $request)
+    {
+        SubscriptionAlert::clearAlerts($request->tableIdentifier, $request->tipIdentifier, $request->siteId);
+        return response(200);
     }
 }

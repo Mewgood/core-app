@@ -50,7 +50,6 @@ class Kernel extends ConsoleKernel
         //   - activate waiting subscriptions
         //   - set package section
         $schedule->command("subscription:process")
-            ->timezone('GMT')
             ->dailyAt('00:01');
 
         /*

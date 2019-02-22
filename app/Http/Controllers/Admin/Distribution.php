@@ -228,6 +228,7 @@ class Distribution extends Controller
 					if( $userType ) {
 						$p_userType = strtoupper($userType->section);
 					}
+                    //dd($userType);
 					$row_data_temp['ruNu'] = $p_userType;
 					
 					// get packages information

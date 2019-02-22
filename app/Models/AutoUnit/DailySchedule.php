@@ -103,9 +103,11 @@ class DailySchedule extends Model {
                         WHEN (SELECT siteConfiguredTablesCounter) = 0 THEN NULL
                         ELSE 2
                     END) AS configurationStatus"
-                )
+                ),
+                "subscription_alerts.package_id AS packageAlert"
             )
             ->join("package", "package.siteId", "=", "site.id")
+            ->leftJoin("subscription_alerts", "subscription_alerts.package_id", "package.id")
             ->leftJoin("auto_unit_monthly_setting", function ($query) {
                 $query->on("auto_unit_monthly_setting.siteId", "=", "site.id");
                 $query->whereRaw('DATE_FORMAT(STR_TO_DATE(auto_unit_monthly_setting.date, "%Y-%m"), "%Y-%m") >= DATE_FORMAT(CURDATE(), "%Y-%m")');
@@ -138,13 +140,14 @@ class DailySchedule extends Model {
                         "pause" => $item["paused_autounit"],
                         "display" => $firstIteration,
                         "tipIdentifier" => $item["tipIdentifier"],
-                        "isVip" => $item["isVip"]
+                        "isVip" => $item["isVip"],
                     ];
                     if ($item["date"] == "") {
                         $item["date"] = $tempDate;
                     }
                     if ($hasSubscription) {
                         $formatedData["ru"][$item["id"]]["display"] = $firstIteration;
+                        $formatedData["ru"][$item["id"]]["packageAlert"] = $item["packageAlert"];
                         if (
                             isset($formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"]) &&
                             $formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"] !== false
@@ -157,6 +160,7 @@ class DailySchedule extends Model {
                         $formatedData["ru"][$item["id"]][$tempDate] = $temp;
                     } else {
                         $formatedData["nu"][$item["id"]]["display"] = $firstIteration;
+                        $formatedData["nu"][$item["id"]]["packageAlert"] = $item["packageAlert"];
                         if (
                             isset($formatedData["nu"][$item["id"]][$tempDate]["configurationStatus"]) &&
                             $formatedData["nu"][$item["id"]][$tempDate]["configurationStatus"] !== false

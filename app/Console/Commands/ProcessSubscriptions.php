@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\SubscriptionAlert;
+
 class ProcessSubscriptions extends CronCommand
 {
     protected $name = 'subscription:process';
@@ -197,6 +199,10 @@ class ProcessSubscriptions extends CronCommand
             ) {
                 $package->paused_autounit = 0;
                 $package->save();
+
+                $subscriptionAlert = new SubscriptionAlert();
+                $subscriptionAlert->store($package); 
+                
             } else {
                 \App\Models\AutoUnit\DailySchedule::where("tipIdentifier", "=", $package->tipIdentifier)
                     ->where("tableIdentifier", "=", $package->tableIdentifier)

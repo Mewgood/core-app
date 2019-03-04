@@ -11,6 +11,7 @@ use App\Console\Commands\AutoUnitAddEvents;
 use App\Console\Commands\SendMail;
 use App\Console\Commands\ProcessSubscriptions;
 use App\Console\Commands\ResetAutounit;
+use App\Console\Commands\AutounitGenerateMonthlyConfiguration;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
@@ -31,7 +32,8 @@ class Kernel extends ConsoleKernel
         AutoUnitAddEvents::class,
         SendMail::class,
         ProcessSubscriptions::class,
-        ResetAutounit::class
+        ResetAutounit::class,
+        AutounitGenerateMonthlyConfiguration::class
     ];
 
     /**
@@ -70,6 +72,11 @@ class Kernel extends ConsoleKernel
             
         $schedule->command('publish:archives')
             ->everyMinute()
+            ->appendOutputTo($filePath);
+        
+        // autogenerate autounit at the start of a month
+        $schedule->command('autounit:generate-monthly-config')
+            ->monthly()
             ->appendOutputTo($filePath);
     }
 }

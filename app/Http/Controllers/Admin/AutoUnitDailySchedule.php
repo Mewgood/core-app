@@ -8,6 +8,7 @@ use App\Site;
 
 use App\Package;
 use App\Models\AutoUnit\DailySchedule;
+use App\Models\AutoUnit\DefaultSetting;
 
 class AutoUnitDailySchedule extends Controller
 {
@@ -51,5 +52,23 @@ class AutoUnitDailySchedule extends Controller
         }
         
         return response($package, 200);
+    }
+    
+    public function saveMonthlyConfiguration(Request $request)
+    {
+        $response = null;
+        if ($request->date == "default") {
+            $response = DefaultSetting::updateSettings($request);
+        } else {
+            $response = DailySchedule::saveMonthlyConfiguration($request);
+        }
+        if (!$response) {
+            return [
+                'type' => 'error',
+                'message' => 'Unknown configuration type',
+            ];
+        } else {
+            return $response;
+        }
     }
 }

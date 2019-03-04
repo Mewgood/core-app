@@ -650,10 +650,10 @@ class AutoUnitAddEvents extends CronCommand
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
             })
-            ->when($this->option("site"), function($query) {
+            ->when($this && $this->option("site"), function($query) {
                 $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
             })
-            ->when($this->option("table"), function($query) {
+            ->when($this && $this->option("table"), function($query) {
                 $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
             ->get()
@@ -671,12 +671,6 @@ class AutoUnitAddEvents extends CronCommand
             ->where('match_id', '=', $matchId)
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("id", $scheduleId);
-            })
-            ->when($this->option("site"), function($query) {
-                $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
-            })
-            ->when($this->option("table"), function($query) {
-                $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
             ->get()
             ->toArray();

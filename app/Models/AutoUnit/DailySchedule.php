@@ -1,4 +1,6 @@
-<?php namespace App\Models\AutoUnit;
+<?php 
+
+namespace App\Models\AutoUnit;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -188,6 +190,106 @@ class DailySchedule extends Model {
             }
         }
         return $formatedData;
+    }
+    
+    public static function saveMonthlyConfiguration($data)
+    {
+        $leagues = json_decode($data->leagues, true);
+        if ($data->configType == 'tips') {
+            if ($data->win + $data->loss + $data->draw != $data->tipsNumber)
+                return [
+                    'type' => 'error',
+                    'message' => 'Win + Loss + Draw must be equal with TipsNumber',
+                    'siteId' => $data->siteId,
+                    'tip' => $data->tipIdentifier
+                ];
+        }
+
+        if ($data->configType == 'days') {
+
+            $dayInMonth = (int) date('t', strtotime($data->date . '-01'));
+            $totalTips = $dayInMonth * $data->tipsPerDay;
+            if ($data->win + $data->loss + $data->draw != $totalTips)
+                return [
+                    'type' => 'error',
+                    'message' => 'Win + Loss + Draw must be equal with TipsPerDay * number of days in month (' . $totalTips . ')',
+                    'siteId' => $data->siteId,
+                    'tip' => $data->tipIdentifier
+                ];
+        }
+
+        // create or update monthly settings
+        $defaultExists = \App\Models\AutoUnit\MonthlySetting::where('siteId', $data->siteId)
+            ->where('tipIdentifier', $data->tipIdentifier)
+            ->where('date', $data->date)
+            ->count();
+
+        if (! $defaultExists) {
+            $default = \App\Models\AutoUnit\MonthlySetting::create(is_a($data, "Illuminate\Http\Request") ? $data->all() : $data->attributes);
+        } else {
+            $default = \App\Models\AutoUnit\MonthlySetting::where('siteId', $data->siteId)
+                ->where('tipIdentifier', $data->tipIdentifier)
+                ->where('date', $data->date)
+                ->first();
+
+            $default->date = $data->date;
+            $default->minOdd = $data->minOdd;
+            $default->maxOdd = $data->maxOdd;
+            $default->prediction1x2 = $data->prediction1x2;
+            $default->predictionOU = $data->predictionOU;
+            $default->predictionAH = $data->predictionAH;
+            $default->predictionGG = $data->predictionGG;
+            $default->win = $data->win;
+            $default->loss = $data->loss;
+            $default->draw = $data->draw;
+            $default->winrate = $data->winrate;
+            $default->configType = $data->configType;
+            $default->tipsPerDay = $data->tipsPerDay;
+            $default->tipsNumber = $data->tipsNumber;
+            $default->save();
+        }
+
+        // delete all schedule for selected month
+        \App\Models\AutoUnit\DailySchedule::where('siteId', $data->siteId)
+            ->where('tipIdentifier', $data->tipIdentifier)
+            ->where('date', $data->date)
+            ->delete();
+
+        // create monthly schedule
+        $default->{"predictionO/U"} = $default->predictionOU; 
+        $default->{"predictionAH"} = $default->predictionAH;
+        $default->{"predictionG/G"} = $default->predictionGG;
+        $scheduleInstance = new \App\Src\AutoUnit\Schedule($default);
+        $scheduleInstance->createSchedule();
+
+        foreach ($scheduleInstance->getSchedule() as $day) {
+            \App\Models\AutoUnit\DailySchedule::create($day);
+        }
+
+        // save associated leagues
+        \App\Models\AutoUnit\League::where('siteId', $data->siteId)
+            ->where('tipIdentifier', $data->tipIdentifier)
+            ->where('type', 'monthly')
+            ->where('date', $data->date)
+            ->delete();
+
+        if (is_array($leagues) && count($leagues) > 0) {
+            foreach ($leagues as $league) {
+                \App\Models\AutoUnit\League::create([
+                    'siteId' => $data->siteId,
+                    'leagueId' => is_a($data, "Illuminate\Http\Request") ? $league : $league["leagueId"],
+                    'tipIdentifier' => $data->tipIdentifier,
+                    'type' => 'monthly',
+                    'date' => $data->date,
+                ]);
+            }
+        }
+        return [
+            'type' => 'success',
+            'message' => '*** Monthly configuration was updated with success.',
+            'siteId' => $data->siteId,
+            'tip' => $data->tipIdentifier
+        ];
     }
 }
 

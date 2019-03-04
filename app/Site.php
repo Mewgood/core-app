@@ -53,4 +53,16 @@ class Site extends Model {
             ->first();
         return $data;
     }
+    
+    public static function withDefaultConfigurations()
+    {
+        $data = Site::select(
+            "auto_unit_default_setting.*"
+        )
+        ->join("auto_unit_default_setting", "auto_unit_default_setting.siteId", "site.id")
+        ->where("site.generate_autounit_monthly", "=", 1)
+        ->get();
+        
+        return $data;
+    }
 }

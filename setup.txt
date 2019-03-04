@@ -7,7 +7,7 @@ docker-compose build
 docker-compose up -d
 
 RESTART
-docker-composer restart
+docker-compose restart
 
 ADD A CRON:
 crontab -e

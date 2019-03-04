@@ -14,5 +14,13 @@ class League extends Model {
         'leagueId',
     ];
 
-//    protected $hidden = [ ‘password’ ];
+    public static function getDefaultConfigurationLeagues($siteId)
+    {
+        $data = League::select("auto_unit_league.leagueId")
+            ->where("auto_unit_league.siteId", "=", $siteId)
+            ->where("type", "=", "default")
+            ->get()
+            ->toArray();
+        return $data;
+    }
 }

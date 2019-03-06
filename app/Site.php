@@ -33,10 +33,11 @@ class Site extends Model {
         return $data;
     }
     
-    public static function hasSubscription($site) 
+    public static function hasSubscription($site, $package) 
     {
         $data = Site::join("subscription", "subscription.siteId", "=", "site.id")
             ->where("site.id", "=", $site)
+            ->where("subscription.packageId", "=", $package)
             ->where("status", "!=", "archived")
             ->exists();
         return $data;

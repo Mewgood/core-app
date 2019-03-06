@@ -47,16 +47,6 @@ class ResetAutounit extends CronCommand
     {
         $today = gmdate("Y-m-d");
         foreach($scheduledEventsMatches as $scheduledEventsMatch) {
-            $counter = DailySchedule::when($this->option("site"), function($query) {
-                    $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
-                })
-                ->when($this->option("table"), function($query) {
-                    $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
-                })
-                ->where("systemDate", "=", $today)
-                ->where("match_id", "=", $scheduledEventsMatch->match_id)
-                ->count();
-
             $event = Event::select(
                     "event.id"
                 )

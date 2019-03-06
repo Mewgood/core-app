@@ -38,20 +38,18 @@ class AutoUnitDailySchedule extends Controller
             ->when($request->site, function($query, $site) {
                 return $query->where("siteId", "=", $site);
             })
+            ->where(function($query) {
+                $query->where("manual_pause", "=", 0)
+                    ->where("paused_autounit", "=", 0);
+            })
+            ->orWhere("manual_pause", "=", 1)
             ->update(["paused_autounit" => !$request->state, "manual_pause" => $request->manual_pause]);
 
-        $package = Package::when($request->tipIdentifier, function($query, $tipIdentifier) {
-                return $query->where("tipIdentifier", "=", $tipIdentifier);
-            })
-            ->when($request->site, function($query, $site) {
-                return $query->where("siteId", "=", $site);
-            })
-            ->first();
         if (!$request->tipIdentifier) {
             \App\Models\Config::where("name", "=", "autounit_all_state")->update(["value" => !$request->state]);
         }
-        
-        return response($package, 200);
+        $response = ["state" => !$request->state];
+        return response($response, 200);
     }
     
     public function saveMonthlyConfiguration(Request $request)

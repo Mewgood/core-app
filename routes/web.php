@@ -384,6 +384,11 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 ->where('tableIdentifier', $tableIdentifier)
                 ->where('tipIdentifier', $package->tipIdentifier)
                 ->get();
+            $hasSubscription = \App\Package::join("subscription", "subscription.packageId", "package.id")
+                ->where("package.id", "=", $package->id)
+                ->where("subscription.status", "!=", "archived")
+                ->exists();
+            
             $isDefaultConf = false;
 
             if ($date == 'default') {
@@ -526,6 +531,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 $schedule->paused = $package->paused_autounit;
                 $schedule->manual_pause = $package->manual_pause;
                 $schedule->hasAlert = $package->alertId ? true : false;
+                $schedule->hasSubscription = $hasSubscription;
                 $data[$key] = $schedule;
                 $data[$key]->packages = $packageNames;
 
@@ -541,6 +547,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 'leagues'       => $associatedLeagues,
                 'tipIdentifier' => $package->tipIdentifier,
                 'scheduleType'  => $scheduleType,
+                'hasSubscription' => $hasSubscription
             ];
 
             if ($date != 'default')

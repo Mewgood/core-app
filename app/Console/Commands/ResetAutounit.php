@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Support\Facades\DB;
 use App\Models\AutoUnit\DailySchedule;
 use App\Match;
+use App\Distribution;
+use App\Event;
 
 class ResetAutounit extends CronCommand
 {
@@ -23,7 +25,9 @@ class ResetAutounit extends CronCommand
     {
         $today = gmdate("Y-m-d");
         $data = DailySchedule::select(
-                "match_id"
+                "match_id",
+                "siteId",
+                "tableIdentifier"
             )
             ->when($this->option("site"), function($query) {
                 $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
@@ -53,6 +57,27 @@ class ResetAutounit extends CronCommand
                 ->where("match_id", "=", $scheduledEventsMatch->match_id)
                 ->count();
 
+            $event = Event::select(
+                    "event.id"
+                )
+                ->join("distribution", "distribution.eventId", "event.id")
+                ->join("match", "match.id", "event.matchId")
+                ->where("match.primaryId", "=", $scheduledEventsMatch->match_id)
+                ->where("distribution.siteid", "=", $scheduledEventsMatch->siteId)
+                ->where("distribution.tableIdentifier", "=", $scheduledEventsMatch->tableIdentifier)
+                ->first();
+
+            if ($event) {
+                Distribution::where("eventId", "=", $event->id)
+                    ->where("siteId", "=", $scheduledEventsMatch->siteId)
+                    ->where("tableIdentifier", "=", $scheduledEventsMatch->tableIdentifier)
+                    ->delete();
+                $distributionEventCounter = Distribution::where("eventId", "=", $event->id)->count();
+                if ($distributionEventCounter == 0) {
+                    $event->delete();
+                }
+            }
+            
             Match::where("primaryId", $scheduledEventsMatch->match_id)
                 ->update([
                     "sites_distributed_counter" => DB::raw('sites_distributed_counter - 1'),

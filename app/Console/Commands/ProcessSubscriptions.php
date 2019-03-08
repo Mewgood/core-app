@@ -181,6 +181,8 @@ class ProcessSubscriptions extends CronCommand
                 "package.siteId",
                 "package.paused_autounit",
                 "package.manual_pause",
+                "package.tipIdentifier",
+                "package.tableIdentifier",
                 "subscription.id AS subscriptionId",
                 "subscription.status AS subscriptionStatus"
             )
@@ -203,7 +205,8 @@ class ProcessSubscriptions extends CronCommand
                 $subscriptionAlert = new SubscriptionAlert();
                 $subscriptionAlert->store($package); 
                 
-            } else {
+            } else if ($package->paused_autounit) {
+                var_dump($package->id . " --- " . $package->subscriptionStatus . " paused: " . $package->paused_autounit . " manual pase: " . $package->manual_pause);
                 \App\Models\AutoUnit\DailySchedule::where("tipIdentifier", "=", $package->tipIdentifier)
                     ->where("tableIdentifier", "=", $package->tableIdentifier)
                     ->where("siteId", "=", $package->siteId)

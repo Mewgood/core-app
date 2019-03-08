@@ -595,6 +595,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         $manuallyAddedEvents = \App\Distribution::select(
                 "distribution.*",
                 "distribution.id AS distributionId",
+                "distribution.isPublish",
                 "match.sites_distributed_counter",
                 "package.isVip"
             )
@@ -626,8 +627,13 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             }
 
             // we must move the flag for table type fron association to archive
-            $manuallyAddedEvents[$k]['isPosted']    = true;
-            $manuallyAddedEvents[$k]['isScheduled'] = false;
+            if ($manuallyAddedEvents[$k]['isPublish']) {
+                $manuallyAddedEvents[$k]['isPosted']    = true;
+                $manuallyAddedEvents[$k]['isScheduled'] = false;
+            } else {
+                $manuallyAddedEvents[$k]['isPosted']    = false;
+                $manuallyAddedEvents[$k]['isScheduled'] = true;
+            }
 
             if ($v['statusId'] == 1)
                 $win++;
@@ -660,7 +666,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             "auto_unit_daily_schedule.*", 
             "auto_unit_daily_schedule.id AS id",
             "package.isVip",
-            "distribution.id AS distributionId"
+            "distribution.id AS distributionId",
+            "distribution.isPublish"
         )
             ->where('auto_unit_daily_schedule.siteId', $siteId)
             ->leftJoin("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
@@ -707,8 +714,15 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $scheduledEvents[$k]['isNoUser']   = false;
             $scheduledEvents[$k]['isAutoUnit'] = true;
 
-            $scheduledEvents[$k]['isPosted']    = false;
-            $scheduledEvents[$k]['isScheduled'] = true;
+            
+            // we must move the flag for table type fron association to archive
+            if ($scheduledEvents[$k]['isPublish']) {
+                $scheduledEvents[$k]['isPosted']    = true;
+                $scheduledEvents[$k]['isScheduled'] = false;
+            } else {
+                $scheduledEvents[$k]['isPosted']    = false;
+                $scheduledEvents[$k]['isScheduled'] = true;
+            }
             $scheduledEvents[$k]['invalidMatches'] = json_decode($v["invalid_matches"]);
 
             if ($v['statusId'] == 1)

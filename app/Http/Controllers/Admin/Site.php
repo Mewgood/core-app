@@ -164,7 +164,14 @@ class Site extends Controller
     {
         // will get this relation for packages model
         // each package has siteId
-        return \App\Package::select('tableIdentifier')->distinct()->where('siteId', $siteId)->get();
+        return \App\Package::select(
+                'tableIdentifier',
+                "site.generate_autounit_monthly"
+            )
+            ->distinct()
+            ->join("site", "site.id", "package.siteId")
+            ->where('siteId', $siteId)
+            ->get();
     }
 
     // create records in archive_home_conf if not exists.
@@ -220,5 +227,13 @@ class Site extends Controller
             ],
             'packages' => $packages,
         ];
+    }
+    
+    public function toggleAUMonthlyGenerationState(Request $request)
+    {
+        \App\Site::where("site.id", "=", $request->siteId)
+            ->update(["generate_autounit_monthly" => !$request->state]);
+        $response = ["state" => !$request->state];
+        return response($response, 200);
     }
 }

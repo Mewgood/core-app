@@ -564,6 +564,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     $app->get('/auto-unit/get-admin-pool/{date}', 'Admin\AutoUnitAdminPool@get');
     $app->get('/auto-unit/sites/statistics', 'Admin\AutoUnitDailySchedule@getAutoUnitSiteStatistics');
     $app->post('/auto-unit/toggle-state', 'Admin\AutoUnitDailySchedule@toggleState');
+    $app->post('/auto-unit/toggle-monthly-config', 'Admin\Site@toggleAUMonthlyGenerationState');
     
     // auto-units
     // @param integer $siteId

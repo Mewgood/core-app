@@ -81,9 +81,6 @@ class AutoUnitAddEvents extends CronCommand
                 continue;
             }
 
-            if (!$matchWithResult) {
-                $this->cleanSiteAutounitDistributions($schedule["siteId"]);
-            }
             $leagues = $this->getAssociatedLeaguesBySchedule(
                 $schedule['siteId'],
                 $schedule['date'],
@@ -767,14 +764,6 @@ class AutoUnitAddEvents extends CronCommand
             ->where("awayTeamId", "=", $match["awayTeamId"])
             ->where("provider", "=", "autounit")
             ->where("predictionId", "=", $odd["predictionId"])
-            ->delete();
-    }
-    
-    private function cleanSiteAutounitDistributions($siteId)
-    {
-        \App\Distribution::where("siteId", "=", $siteId)
-            ->where("provider", "=", "autounit")
-            ->where("to_distribute", "=", 0)
             ->delete();
     }
     

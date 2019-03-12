@@ -7,6 +7,7 @@ use App\Models\AutoUnit\DailySchedule;
 use App\Match;
 use App\Distribution;
 use App\Event;
+use App\Association;
 
 class ResetAutounit extends CronCommand
 {
@@ -64,6 +65,7 @@ class ResetAutounit extends CronCommand
                     ->delete();
                 $distributionEventCounter = Distribution::where("eventId", "=", $event->id)->count();
                 if ($distributionEventCounter == 0) {
+                    Association::where("eventId", "=", $event->id)->delete();
                     $event->delete();
                 }
             }

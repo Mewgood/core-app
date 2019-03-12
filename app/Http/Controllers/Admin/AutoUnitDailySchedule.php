@@ -40,9 +40,9 @@ class AutoUnitDailySchedule extends Controller
             })
             ->where(function($query) {
                 $query->where("manual_pause", "=", 0)
-                    ->where("paused_autounit", "=", 0);
+                    ->where("paused_autounit", "=", 0)
+                    ->orWhere("manual_pause", "=", 1);
             })
-            ->orWhere("manual_pause", "=", 1)
             ->update(["paused_autounit" => !$request->state, "manual_pause" => $request->manual_pause]);
 
         if (!$request->tipIdentifier) {

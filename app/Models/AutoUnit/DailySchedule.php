@@ -158,7 +158,7 @@ class DailySchedule extends Model {
                         isset($formatedData[$type][$item["id"]][$tempDate]["configurationStatus"]) &&
                         $formatedData[$type][$item["id"]][$tempDate]["configurationStatus"] !== false
                     ) {
-                        $configurationStatus = $formatedData["ru"][$item["id"]][$tempDate]["configurationStatus"];
+                        $configurationStatus = $formatedData[$type][$item["id"]][$tempDate]["configurationStatus"];
                     } else if ($item["date"] == $tempDate) {
                         $configurationStatus = $item["configurationStatus"];
                     }

@@ -100,7 +100,6 @@ class Association extends Controller
             if (\App\Package::where('id', $id)->where('isVip', '1')->count())
                 unset($packagesIds[$k]);
         }
-
         // sort by event type tip or noTip
         foreach ($packagesIds as $k => $id) {
 
@@ -145,7 +144,7 @@ class Association extends Controller
         $todayYMD = gmdate("Y-m-d");
         
         $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section, $data['event']);
-        
+
         foreach ($packages as $p) {
 
             $site = \App\Site::find($p->siteId);

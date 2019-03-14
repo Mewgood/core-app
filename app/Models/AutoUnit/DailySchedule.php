@@ -171,8 +171,8 @@ class DailySchedule extends Model {
             $item["lastSubscription"] = Site::getLastSubscription($item["siteId"])->dateEnd;
 
             // overwrite it if the autounit is set for that month
-            $formatedData[$type][$item["id"]][$item["date"]]["lastSubscription"] = $item["lastSubscription"];
-            $formatedData[$type][$item["id"]][$item["date"]]["tipsLeft"] = $item["tipsLeft"];
+            $formatedData[$type][$item["id"]][date("Y-m", strtotime($item["date"]))]["lastSubscription"] = $item["lastSubscription"];
+            $formatedData[$type][$item["id"]][date("Y-m", strtotime($item["date"]))]["tipsLeft"] = $item["tipsLeft"];
         }
         return $formatedData;
     }

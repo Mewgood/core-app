@@ -177,26 +177,17 @@ class Association extends Controller
                     (float)$data['event']->odd >= (float)$autounit->minOdd && 
                     (float)$data['event']->odd <= (float)$autounit->maxOdd
                 ) {
-                    // eligible
-                    $autounitMatchSet = DailySchedule::where("systemDate", "=", $todayYMD)
-                        ->where("siteId", "=", $p->siteId)
-                        ->where("tipIdentifier", "=", $p->tipIdentifier)
-                        ->where("tableIdentifier", "=", $p->tableIdentifier)
-                        ->whereNotNull("match_id")
-                        ->first();
 
-                    if ($autounitMatchSet || $tipsDifference >= 0) {
-                        if ($p->paused_autounit && $p->manual_pause) {
-                            $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                        } else {
-                            $this->mapAssociationModalData($data, 3, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                        }
+                    if ($tipsDifference >= 0) {
+                        $this->mapAssociationModalData($data, 3, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     } else {
-                        if ($p->paused_autounit && $p->manual_pause) {
-                            $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                        } else {
-                            $this->mapAssociationModalData($data, 4, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                        }
+                        $this->mapAssociationModalData($data, 4, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                    }
+                } else if (!$autounit) {
+                    if ($tipsDifference < 0) {
+                        $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                    } else {
+                        $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     }
                 } else {
                     // not eligible

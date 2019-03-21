@@ -698,6 +698,20 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->toArray();
 
         foreach ($scheduledEvents as $k => $v) {
+            $prediction = array_search($v["predictionId"], array_column($manuallyAddedEvents, 'predictionId'));
+            $homeTeamId = array_search($v["homeTeamId"], array_column($manuallyAddedEvents, 'homeTeamId'));
+            $awayTeamId = array_search($v["awayTeamId"], array_column($manuallyAddedEvents, 'awayTeamId'));
+            $odd = array_search($v["odd"], array_column($manuallyAddedEvents, 'odd'));
+            
+            if (
+                $prediction !== false &&
+                $homeTeamId !== false && 
+                $awayTeamId !== false && 
+                $odd !== false
+            ) {
+                unset($manuallyAddedEvents[$prediction]);
+            }
+            
             $scheduledEvents[$k]['scheduleId'] = $v["id"];
             $scheduledEvents[$k]['prediction1x2'] = $v["prediction1x2"];
             $scheduledEvents[$k]['predictionOU'] = $v["predictionOU"];

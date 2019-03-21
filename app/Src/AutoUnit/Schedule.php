@@ -243,7 +243,7 @@ Class Schedule
 
     private function setRangeOfDays() : void
     {
-        $stringDate = $this->settings->date . '-01';
+        $stringDate = gmdate("Y-m-d");
 
         $startDate = new \DateTime($stringDate);
         $endDate = new \DateTime($startDate->format('Y-m-t'));

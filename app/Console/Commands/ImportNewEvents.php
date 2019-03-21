@@ -39,13 +39,13 @@ class ImportNewEvents extends CronCommand
 
             $m = [
                 'id' => $match['id'],
-                'country' => $match['tournament_country'],
+                'country' => addslashes($match['tournament_country']),
                 'countryCode' => $match['tournament_country_code'],
                 'league' => $match['tournament_title'],
                 'leagueId' => $match['tournament_id'],
-                'homeTeam' => $match['home_team_name'],
+                'homeTeam' => addslashes($match['home_team_name']),
                 'homeTeamId' => $match['home_team_id'],
-                'awayTeam' => $match['away_team_name'],
+                'awayTeam' => addslashes($match['away_team_name']),
                 'awayTeamId' => $match['away_team_id'],
                 'result' => '',
                 'eventDate' => $match['utc_date'],

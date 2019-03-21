@@ -353,8 +353,8 @@ class AutoUnitAddEvents extends CronCommand
 			}
             $ev = \App\Event::create($event);
             $ev = $ev->toArray();
-            $ev["to_distribute"] = $event["to_distribute"];
 		}
+        $ev["to_distribute"] = $event["to_distribute"];
         
         return is_array($ev) ? $ev : $ev->toArray();
     }
@@ -364,10 +364,12 @@ class AutoUnitAddEvents extends CronCommand
         $assoc = \App\Association::where('eventId', $event['id'])
             ->where('type', $event['type'])
             ->where('predictionId', $event['predictionId'])
+            ->where("provider", "=", "autounit")
             ->first();
 
         if (! $assoc) {
             $event['eventId'] = (int)$event['id'];
+            $event["provider"] = "autounit";
             unset($event['id']);
             unset($event['created_at']);
             unset($event['updated_at']);
@@ -415,7 +417,6 @@ class AutoUnitAddEvents extends CronCommand
 
             // create association
             $assoc = $this->getOrCreateAssociation($event);
-
             $assoc['associationId'] = $assoc['id'];
             unset($assoc['id']);
             unset($assoc['created_at']);
@@ -514,7 +515,7 @@ class AutoUnitAddEvents extends CronCommand
             $statusByScore->evaluateStatus();
             $statusId = $statusByScore->getStatus();
         
-            if ($statusId == -1 && $event['result'] != '') {
+            if ($statusId == -1 && $event["result"] != "") {
                 $event['error'] = true;
             }
 
@@ -533,7 +534,7 @@ class AutoUnitAddEvents extends CronCommand
             } else if ($statusId != $schedule['statusId']) {
                 continue;
             }
-
+            
             if ($statusId == $schedule['statusId']) {
                 $event['to_distribute'] = true;
             } else {

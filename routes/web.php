@@ -709,6 +709,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 $awayTeamId !== false && 
                 $odd !== false
             ) {
+                //dd($manuallyAddedEvents[$prediction]);
                 unset($manuallyAddedEvents[$prediction]);
             }
             

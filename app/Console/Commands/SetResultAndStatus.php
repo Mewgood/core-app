@@ -56,13 +56,12 @@ class SetResultAndStatus extends CronCommand
         ];
 
         $matches = \App\Match::where('result', '')
-            ->where('eventDate', '<' , gmdate('Y-m-d H:i:s', time() - (105 * 60)))
+            ->where('estimated_finished_time', '<=' , gmdate('Y-m-d H:i:s'))
             ->get();
 
         $info['appEventNoResult'] = count($matches);
 
         foreach ($matches as $match) {
-
             $xml = file_get_contents(env('LINK_PORTAL_EVENT_RESULT') . '?tournament=' . $match->leagueId . '&match=' . $match->id);
             
             if (!$xml) {
@@ -79,6 +78,9 @@ class SetResultAndStatus extends CronCommand
             }
 
             if (trim($c['match_status']) == 'pending') {
+                $newEstimatedTime = strtotime($match->estimated_finished_time) + (60 * 40); // add another 40 minutes if the match entered in overtime
+                $match->estimated_finished_time = gmdate("Y-m-d H:i:s", $newEstimatedTime);
+                $match->save();
                 $info['pending']++;
                 continue;
             }

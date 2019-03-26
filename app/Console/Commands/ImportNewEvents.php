@@ -36,7 +36,7 @@ class ImportNewEvents extends CronCommand
             $this->predictions[$pred->identifier] = true;
 
         foreach ($c['match'] as $k => $match) {
-
+            $estimatedFinishedTime = strtotime($match['utc_date']) + (60 * 115); // estimate that the match will end in 115 minutes
             $m = [
                 'id' => $match['id'],
                 'country' => addslashes($match['tournament_country']),
@@ -49,6 +49,7 @@ class ImportNewEvents extends CronCommand
                 'awayTeamId' => $match['away_team_id'],
                 'result' => '',
                 'eventDate' => $match['utc_date'],
+                'estimated_finished_time' => $estimatedFinishedTime
             ];
 
             if (\App\Match::where('id', $m['id'])->where('leagueId', $m['leagueId'])->count()) {

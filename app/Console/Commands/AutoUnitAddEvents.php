@@ -156,6 +156,7 @@ class AutoUnitAddEvents extends CronCommand
                     $event["predictionId"] = $odd->predictionId;
                     $event["countryCode"] = $matchWithResult->countryCode;
                     $event["country"] = $matchWithResult->country;
+                    $event["to_distribute"] = true;
 
                     $packages = \App\Package::where('siteId', $schedule['siteId'])
                         ->where('tipIdentifier', $schedule['tipIdentifier'])
@@ -668,7 +669,7 @@ class AutoUnitAddEvents extends CronCommand
             ->where('status', '=', 'waiting')
             ->where('match_id', '=', $matchId)
             ->when($scheduleId, function($query, $scheduleId) {
-                $query->where("id", $scheduleId);
+                $query->where("auto_unit_daily_schedule.id", $scheduleId);
             })
             ->get()
             ->toArray();

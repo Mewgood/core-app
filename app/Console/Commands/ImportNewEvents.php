@@ -15,7 +15,7 @@ class ImportNewEvents extends CronCommand
 
     public function fire()
     {
-        $cron = $this->startCron();
+        //$cron = $this->startCron();
         $info = [
             'imported'      => 0,
             'alreadyExists' => 0,
@@ -23,7 +23,7 @@ class ImportNewEvents extends CronCommand
         ];
 
         $xml = file_get_contents(env('LINK_PORTAL_NEW_EVENTS'));
-
+        
         if (!$xml) {
             $info['error'] = true;
             $this->stopCron($cron, $info);
@@ -49,7 +49,7 @@ class ImportNewEvents extends CronCommand
                 'awayTeamId' => $match['away_team_id'],
                 'result' => '',
                 'eventDate' => $match['utc_date'],
-                'estimated_finished_time' => $estimatedFinishedTime
+                'estimated_finished_time' => gmdate("Y-m-d H:i:s", $estimatedFinishedTime)
             ];
 
             if (\App\Match::where('id', $m['id'])->where('leagueId', $m['leagueId'])->count()) {
@@ -132,11 +132,10 @@ class ImportNewEvents extends CronCommand
 			if( $countryAlias && $countryAlias->alias && $countryAlias->alias != '' ) {
 				$m['country'] = $countryAlias->alias;
 			}
-			
-			
-            // store new match
-            \App\Match::create($m);
 
+            // store new match
+            App\Match::create($m);
+            
             // odds
             if (!empty($match['odds'])) {
                 $this->insertOdds($m['id'], $m['leagueId'], $match['odds']);
@@ -149,7 +148,7 @@ class ImportNewEvents extends CronCommand
         $info['alreadyExists'] = $this->alreadyExists;
 
         $this->info(json_encode($info));
-        $this->stopCron($cron, $info);
+        //$this->stopCron($cron, $info);
         return true;
     }
 

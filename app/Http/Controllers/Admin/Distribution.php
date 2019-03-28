@@ -119,7 +119,7 @@ class Distribution extends Controller
 
                 // get events for package
                 $distributedEvents = \App\Distribution::select("distribution.*", "auto_unit_daily_schedule.is_from_admin_pool")
-                    ->join("event", "event.id", "distribution.eventId")
+                    ->leftJoin("event", "event.id", "distribution.eventId")
                     ->leftJoin("match", "match.id", "event.matchId")
                     ->leftJoin("auto_unit_daily_schedule", function($query) {
                         $query->on("auto_unit_daily_schedule.match_id", "match.primaryId");

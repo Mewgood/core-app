@@ -134,7 +134,7 @@ class ImportNewEvents extends CronCommand
 			}
 
             // store new match
-            App\Match::create($m);
+            \App\Match::create($m);
             
             // odds
             if (!empty($match['odds'])) {

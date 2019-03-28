@@ -179,7 +179,6 @@ class DailySchedule extends Model {
     
     public static function saveMonthlyConfiguration($data)
     {
-        dd($data->date);
         $leagues = json_decode($data->leagues, true);
         if ($data->configType == 'tips') {
             if ($data->win + $data->loss + $data->draw != $data->tipsNumber)

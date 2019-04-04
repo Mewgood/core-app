@@ -194,14 +194,10 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param $countryCode
     // @return array()
     $app->get('/team-country/{countryCode}', function ($countryCode) use ($app) {
-        $teams = \App\Models\Team\Country::select('teamId')
+        $teams = \App\Models\Team\Country::select('teamId', 'name')
+            ->join("team", "team.id", "=", "team_country.teamId")
             ->where('countryCode', $countryCode)
             ->get();
-
-        foreach ($teams as $team) {
-            $t = \App\Team::find($team->teamId);
-            $team->name = $t->name;
-        }
 
         return $teams;
     });

@@ -2,6 +2,7 @@
 
 use Nathanmac\Utilities\Parser\Facades\Parser;
 use App\Console\Commands\AutoUnitAddEvents;
+use Illuminate\Support\Facades\DB;
 
 // statuses for tipstersportal can be:
 //     canceled, postponed, pending, final
@@ -55,24 +56,40 @@ class SetResultAndStatus extends CronCommand
             'message'          => []
         ];
 
-        $matches = \App\Match::where('result', '')
+        $today = strtotime("now");
+        $yesterday = strtotime('-1 day', $today);
+
+        $matches = \App\Match::select(
+                DB::raw("concat(leagueId, '') AS tournamentId"),
+                DB::raw("concat(id, '') AS matchId")
+            )
+            ->where('result', '')
             ->where('estimated_finished_time', '<=' , gmdate('Y-m-d H:i:s'))
-            ->get();
-
-        $info['appEventNoResult'] = count($matches);
-
-        foreach ($matches as $match) {
-            $xml = file_get_contents(env('LINK_PORTAL_EVENT_RESULT') . '?tournament=' . $match->leagueId . '&match=' . $match->id);
+            ->where('eventDate', '>=' , gmdate('Y-m-d H:i:s', $yesterday))
+            ->get()
+            ->toArray();
             
-            if (!$xml) {
-                $info['message'] = "Can not parse xml for machId: " . $match->id . ", leagueId: " . $match->leagueId;
-                continue;
-            }
+        $items = json_encode($matches);
+        $info['appEventNoResult'] = count($matches);
+        $url = env('LINK_PORTAL_LIST_EVENT_RESULTS') . "?items=" . $items;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); 
+        $xml = curl_exec($ch); 
+            
+        if (!$xml) {
+            $info['message'] = "Can not parse xml for machId: " . $match->id . ", leagueId: " . $match->leagueId;
+            $this->info(json_encode($info));
+            return false;
+        }
 
-            $c = Parser::xml($xml);
-
+        $list = Parser::xml($xml);
+        
+        foreach ($list as $c) {
             if (!isset($c['match_status'])) {
-                $info['message'] = "Not found machId: " . $match->id . ", leagueId: " . $match->leagueId;
+                $info['message'] = "Not found machId";
                 $info['notFound']++;
                 continue;
             }

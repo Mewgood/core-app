@@ -71,11 +71,14 @@ class SetResultAndStatus extends CronCommand
             
         $items = json_encode($matches);
         $info['appEventNoResult'] = count($matches);
-        $url = env('LINK_PORTAL_LIST_EVENT_RESULTS') . "?items=" . $items;
+        $url = env('LINK_PORTAL_LIST_EVENT_RESULTS');
+        $body = [];
+        $body["items"] = $items;
         
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); 
         $xml = curl_exec($ch); 
             
@@ -87,13 +90,14 @@ class SetResultAndStatus extends CronCommand
 
         $list = Parser::xml($xml);
         
-        foreach ($list as $c) {
+        foreach ($list["match"] as $c) {
             if (!isset($c['match_status'])) {
                 $info['message'] = "Not found machId";
                 $info['notFound']++;
                 continue;
             }
 
+            $match = \App\Match::where('id', '=', $c["id"])->first();
             if (trim($c['match_status']) == 'pending') {
                 $newEstimatedTime = strtotime($match->estimated_finished_time) + (60 * 40); // add another 40 minutes if the match entered in overtime
                 $match->estimated_finished_time = gmdate("Y-m-d H:i:s", $newEstimatedTime);
@@ -112,8 +116,8 @@ class SetResultAndStatus extends CronCommand
             if (trim($c['match_status']) == 'final') {
                 $score = str_replace(':', '-', trim($c['fulltime_score']));
 
-                $events = \App\Event::where('matchId', $match->id)
-                    ->where('leagueId', $match->leagueId)
+                $events = \App\Event::where('matchId', $c["id"])
+                    ->where('leagueId', $c["tournament_id"])
                     ->join("prediction", "prediction.identifier", "event.predictionId")
                     ->get();
 

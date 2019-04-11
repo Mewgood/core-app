@@ -68,7 +68,13 @@ class SetResultAndStatus extends CronCommand
             ->where('eventDate', '>=' , gmdate('Y-m-d H:i:s', $yesterday))
             ->get()
             ->toArray();
-            
+        
+        if (!count($matches)) {
+            $info['message'] = "No matches found.";
+            $this->info(json_encode($info));
+            return false;
+        }
+        
         $items = json_encode($matches);
         $info['appEventNoResult'] = count($matches);
         $url = env('LINK_PORTAL_LIST_EVENT_RESULTS');
@@ -83,7 +89,7 @@ class SetResultAndStatus extends CronCommand
         $xml = curl_exec($ch); 
             
         if (!$xml) {
-            $info['message'] = "Can not parse xml for machId: " . $match->id . ", leagueId: " . $match->leagueId;
+            $info['message'] = "Can not parse xml";
             $this->info(json_encode($info));
             return false;
         }

@@ -18,28 +18,30 @@ class ResetAutounit extends CronCommand
     public function fire()
     {
         $scheduledEvents = $this->getAutoUnitSchedules();
-        $this->resetMatchCounters($scheduledEvents);
         $this->resetScheduledEvents();
+        $this->resetMatchCounters($scheduledEvents);
     }
     
     private function getAutoUnitSchedules()
     {
         $today = gmdate("Y-m-d");
         $data = DailySchedule::select(
-                "match_id",
-                "siteId",
-                "tableIdentifier"
+                "auto_unit_daily_schedule.match_id",
+                "auto_unit_daily_schedule.siteId",
+                "auto_unit_daily_schedule.tableIdentifier"
             )
+            ->join("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
+            ->join("event", "event.matchId", "match.id")
+            ->join("distribution", "distribution.eventId", "event.id")
             ->when($this->option("site"), function($query) {
                 $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
             })
             ->when($this->option("table"), function($query) {
                 $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
-            ->whereNotNull("match_id")
-            ->where("systemDate", "=", $today)
-            ->where("to_distribute", "=", 0)
-            ->where("status", "!=", "success")
+            ->whereNotNull("auto_unit_daily_schedule.match_id")
+            ->where("auto_unit_daily_schedule.systemDate", "=", $today)
+            ->where("distribution.isPublish", "=", 0)
             ->get();
         return $data;
     }
@@ -81,8 +83,11 @@ class ResetAutounit extends CronCommand
     private function resetScheduledEvents()
     {
         $today = gmdate("Y-m-d");
-        DailySchedule::where("systemDate", "=", $today)
-            ->where("status", "!=", "success")
+        DB::table('auto_unit_daily_schedule')->join("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
+            ->join("event", "event.matchId", "match.id")
+            ->join("distribution", "distribution.eventId", "event.id")
+            ->where("auto_unit_daily_schedule.systemDate", "=", $today)
+            ->where("distribution.isPublish", "=", 0)
             ->when($this->option("site"), function($query) {
                 $query->where("auto_unit_daily_schedule.siteId", "=", $this->option("site"));
             })
@@ -90,13 +95,13 @@ class ResetAutounit extends CronCommand
                 $query->where("auto_unit_daily_schedule.tableIdentifier", "=", $this->option("table"));
             })
             ->update([
-                "status" => "waiting",
-                "info" => "[]",
-                "match_id" => NULL,
-                "to_distribute" => 0,
-                "invalid_matches" => "[]",
-                "is_from_admin_pool" => 0,
-                "odd_id" => NULL
+                "auto_unit_daily_schedule.status" => "waiting",
+                "auto_unit_daily_schedule.info" => "[]",
+                "auto_unit_daily_schedule.match_id" => NULL,
+                "auto_unit_daily_schedule.to_distribute" => 0,
+                "auto_unit_daily_schedule.invalid_matches" => "[]",
+                "auto_unit_daily_schedule.is_from_admin_pool" => 0,
+                "auto_unit_daily_schedule.odd_id" => NULL
             ]);
     }
 }

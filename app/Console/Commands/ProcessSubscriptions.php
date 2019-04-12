@@ -176,6 +176,7 @@ class ProcessSubscriptions extends CronCommand
     
     private function processAutounitPauseState()
     {
+        $today = gmdate("Y-m-d");
         $packages = \App\Package::select(
                 "package.id", 
                 "package.siteId",
@@ -187,11 +188,12 @@ class ProcessSubscriptions extends CronCommand
                 "subscription.status AS subscriptionStatus"
             )
             ->leftJoin("subscription", "subscription.packageId", "package.id")
+            ->join("auto_unit_daily_schedule", "auto_unit_daily_schedule.siteId", "package.siteId")
             ->whereRaw("subscription.id = (SELECT MAX(subscription.id) FROM subscription WHERE subscription.packageId = package.id)")
+            ->where("auto_unit_daily_schedule.systemDate", "=", $today)
             ->groupBy("package.id")
             ->get();
 
-        $today = gmdate("Y-m-d");
         foreach ($packages as $package) {
             if (
                 $package->subscriptionId == null || 

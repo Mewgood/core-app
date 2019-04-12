@@ -120,6 +120,7 @@ class DailySchedule extends Model {
         $data = self::formatAutoUnitSiteStatisticsData($data);
         return $data;
     }
+
     // populate with empty data for the missing dates
     private static function formatAutoUnitSiteStatisticsData($data)
     {

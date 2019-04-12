@@ -238,6 +238,7 @@ class DailySchedule extends Model {
         \App\Models\AutoUnit\DailySchedule::where('siteId', $data->siteId)
             ->where('tipIdentifier', $data->tipIdentifier)
             ->where('date', $data->date)
+            ->where('to_distribute', '=', 0)
             ->delete();
 
         // create monthly schedule

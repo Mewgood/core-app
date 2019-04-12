@@ -1270,6 +1270,7 @@ class Distribution extends Controller
      */
     public function forceDestroy(Request $r) {
         $ids = $r->input('ids');
+        $type = $r->input('type') ? $r->input('type') : "distribution";
 
         if (!$ids)
             return [
@@ -1279,63 +1280,68 @@ class Distribution extends Controller
 
         $deleted = 0;
         $message = '';
-        foreach ($ids as $id) {
+        
+        if ($type == "distribution") {
+            foreach ($ids as $id) {
+                $distribution = \App\Distribution::find($id);
 
-            $distribution = \App\Distribution::find($id);
+                if (!$distribution) {
+                    continue;
+                }
 
-            if (!$distribution) {
-                continue;
-            }
-
-            \App\ArchiveHome::where('eventId', $distribution->eventId)
-                ->where('siteId', $distribution->siteId)
-                ->delete();
-
-            \App\ArchiveBig::where('eventId', $distribution->eventId)
-                ->where('siteId', $distribution->siteId)
-                ->delete();
-
-            \App\SubscriptionRestrictedTip::where('distributionId', $distribution->id)
-                ->where('systemDate', $distribution->systemDate)
-                ->delete();
-
-            \App\SubscriptionTipHistory::where('eventId', $distribution->eventId)
-                ->where('siteId', $distribution->siteId)
-                ->delete();
-            
-            
-
-            \App\Models\AutoUnit\DailySchedule::join("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
-                ->join("event", "event.matchId", "match.id")
-                ->join("distribution", "distribution.eventId", "event.id")
-                ->where("distribution.id", "=", $distribution->id)
-                ->delete();
-                
-            if (! \App\ArchivePublishStatus::where('siteId' , $distribution['siteId'])->where('type' , 'archiveBig')->count())
-                \App\ArchivePublishStatus::create([
-                    'siteId' => $distribution['siteId'],
-                    'type'   => 'archiveBig'
-                ]);
-
-            if (! \App\ArchivePublishStatus::where('siteId' , $distribution['siteId'])->where('type' , 'archiveHome')->count())
-                \App\ArchivePublishStatus::create([
-                    'siteId' => $distribution['siteId'],
-                    'type'   => 'archiveHome'
-                ]);
-
-            \App\Distribution::where("eventId", "=", $distribution->eventId)
-                ->where("provider", "=", "autounit")
-                ->where("tipIdentifier", "=", $distribution->tipIdentifier)
-                ->delete();
-            $distributions = \App\Distribution::where("eventId", "=", $distribution->eventId)
-                ->get();
-
-            // delete association if no event is associated with a site
-            if (!count($distributions)) {
-                \App\Association::where("eventId", "=", $distribution->eventId)
-                    ->where("provider", "=", "autounit")
+                \App\ArchiveHome::where('eventId', $distribution->eventId)
+                    ->where('siteId', $distribution->siteId)
                     ->delete();
+
+                \App\ArchiveBig::where('eventId', $distribution->eventId)
+                    ->where('siteId', $distribution->siteId)
+                    ->delete();
+
+                \App\SubscriptionRestrictedTip::where('distributionId', $distribution->id)
+                    ->where('systemDate', $distribution->systemDate)
+                    ->delete();
+
+                \App\SubscriptionTipHistory::where('eventId', $distribution->eventId)
+                    ->where('siteId', $distribution->siteId)
+                    ->delete();
+                
+                
+
+                \App\Models\AutoUnit\DailySchedule::join("match", "match.primaryId", "auto_unit_daily_schedule.match_id")
+                    ->join("event", "event.matchId", "match.id")
+                    ->join("distribution", "distribution.eventId", "event.id")
+                    ->where("distribution.id", "=", $distribution->id)
+                    ->delete();
+                    
+                if (! \App\ArchivePublishStatus::where('siteId' , $distribution['siteId'])->where('type' , 'archiveBig')->count())
+                    \App\ArchivePublishStatus::create([
+                        'siteId' => $distribution['siteId'],
+                        'type'   => 'archiveBig'
+                    ]);
+
+                if (! \App\ArchivePublishStatus::where('siteId' , $distribution['siteId'])->where('type' , 'archiveHome')->count())
+                    \App\ArchivePublishStatus::create([
+                        'siteId' => $distribution['siteId'],
+                        'type'   => 'archiveHome'
+                    ]);
+
+                \App\Distribution::where("eventId", "=", $distribution->eventId)
+                    ->where("provider", "=", "autounit")
+                    ->where("tipIdentifier", "=", $distribution->tipIdentifier)
+                    ->delete();
+                $distributions = \App\Distribution::where("eventId", "=", $distribution->eventId)
+                    ->get();
+
+                // delete association if no event is associated with a site
+                if (!count($distributions)) {
+                    \App\Association::where("association.eventId", "=", $distribution->eventId)
+                        ->where("provider", "=", "autounit")
+                        ->delete();
+                }
+                $deleted++;
             }
+        } else {
+            \App\Models\AutoUnit\DailySchedule::where("auto_unit_daily_schedule.id", "=", $ids)->delete();
             $deleted++;
         }
 

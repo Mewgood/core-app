@@ -66,4 +66,66 @@ class Site extends Model {
         
         return $data;
     }
+    
+    public static function getSitesDistributions($date, $real_user_sort = 0, $vip_user_sort = 0, $emails_sort = 0)
+    {
+        $data = Site::select(
+            "site.id AS siteId",
+            "site.name AS siteName",
+            "distribution.*",
+            "distribution.id AS distributionId",
+            "auto_unit_daily_schedule.is_from_admin_pool",
+            "package.*",
+            "package_section.section AS ruNu",
+            DB::raw('(
+                    SELECT COUNT(distribution.id) 
+                    FROM distribution 
+                    WHERE distribution.packageId = package.id 
+                    AND distribution.systemDate = "' . $date . '"
+                ) AS totalEvents'
+            ),
+            DB::raw('(
+                    SELECT COUNT(distribution.id) 
+                    FROM distribution 
+                    WHERE distribution.packageId = package.id 
+                    AND distribution.systemDate = "' . $date . '"
+                    AND distribution.isPublish
+                ) AS totalEventsPublished'
+            ),
+            DB::raw('(
+                    SELECT COUNT(distribution.id) 
+                    FROM distribution 
+                    WHERE distribution.packageId = package.id 
+                    AND distribution.systemDate = "' . $date . '"
+                    AND distribution.isEmailSend
+                ) AS totalEventsMailSent'
+            ),
+            DB::raw("IF ((SELECT(totalEvents)) = (SELECT(totalEventsMailSent)), 1, 0) AS emailsSent")
+        )
+        ->leftJoin("site_package", "site_package.siteId", "site.id")
+        ->leftJoin("package", "package.id", "site_package.packageId")
+        ->leftJoin("distribution", function($query) use($date) {
+            $query->on("distribution.packageId", "package.id");
+            $query->where("distribution.systemDate", $date);
+        })
+        ->leftJoin("event", "event.id", "distribution.eventId")
+        ->leftJoin("match", "match.id", "event.matchId")
+        ->leftJoin("package_section", "package_section.packageId", "package.id")
+        ->leftJoin("auto_unit_daily_schedule", function($query) {
+            $query->on("auto_unit_daily_schedule.match_id", "match.primaryId");
+            $query->on("auto_unit_daily_schedule.siteId", "distribution.siteId");
+        })
+        ->groupBy("package.siteId", "package.tipIdentifier", "distribution.eventId")
+        ->when($real_user_sort, function ($query, $real_user_sort) {
+            return $query->orderBy('package_section.section', "DESC");
+        })
+        ->when($vip_user_sort, function ($query, $vip_user_sort) {
+            return $query->orderBy('package.isVip', "DESC");
+        })
+        ->when($emails_sort, function ($query, $emails_sort) {
+            return $query->orderBy('emailSent', "DESC");
+        })
+        ->get();
+        return $data;
+    }
 }

@@ -110,20 +110,29 @@ class Site extends Model {
         })
         ->leftJoin("event", "event.id", "distribution.eventId")
         ->leftJoin("match", "match.id", "event.matchId")
-        ->leftJoin("package_section", "package_section.packageId", "package.id")
+        ->leftJoin("package_section", function($query) use($date) {
+            $query->on("package_section.packageId", "package.id");
+            $query->where("package_section.systemDate", $date);
+        })
         ->leftJoin("auto_unit_daily_schedule", function($query) {
             $query->on("auto_unit_daily_schedule.match_id", "match.primaryId");
             $query->on("auto_unit_daily_schedule.siteId", "distribution.siteId");
         })
         ->groupBy("package.siteId", "package.tipIdentifier", "distribution.eventId")
         ->when($real_user_sort, function ($query, $real_user_sort) {
-            return $query->orderBy('package_section.section', "DESC");
+            return $query->where('package_section.section', "=", $real_user_sort);
         })
-        ->when($vip_user_sort, function ($query, $vip_user_sort) {
-            return $query->orderBy('package.isVip', "DESC");
+        ->when($vip_user_sort == "notvip", function ($query, $vip_user_sort) {
+            return $query->where('package.isVip', "=", 0);
         })
-        ->when($emails_sort, function ($query, $emails_sort) {
-            return $query->orderBy('emailSent', "DESC");
+        ->when($vip_user_sort == "vip", function ($query, $vip_user_sort) {
+            return $query->where('package.isVip', "=", 1);
+        })
+        ->when($emails_sort == "sent", function ($query, $emails_sort) {
+            return $query->where('isEmailSend', "=", 1);
+        })
+        ->when($emails_sort == "unsent", function ($query, $emails_sort) {
+            return $query->where('isEmailSend', "=", 0);
         })
         ->get();
         return $data;

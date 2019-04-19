@@ -107,16 +107,33 @@ class Distribution extends Controller
             $date = gmdate('Y-m-d');
 
         $data = Site::getSitesDistributions($date, $real_user_sort, $vip_user_sort, $emails_sort);
+        $currentTipIdentifier = "";
+        $currentSite = "";
+        $display = false;
 
         foreach ($data as $item) {
-            $this->mapSiteDistributions($item, $mappedData);
+            if ($currentTipIdentifier != $item->tipIdentifier || $currentSite != $item->siteId) {
+                $display = true;
+                $currentTipIdentifier = $item->tipIdentifier;
+                $currentSite = $item->siteId;
+            }
+            $this->mapSiteDistributions($item, $mappedData, $display);
+            $display = false;
         }
         
         return $mappedData;
     }
     
-    private function mapSiteDistributions($item, &$mappedData) 
+    private function mapSiteDistributions($item, &$mappedData, $display) 
     {
+        $distributionIds = "";
+        for ($i = 0; $i < $item->totalEvents; $i++) {
+            $distributionIds .= $item->distributionId + $i . ", ";
+        }
+        $distributionIds = rtrim($distributionIds, ", ");
+
+        $item->display = $display;
+        $item->distributionIds = $distributionIds;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["siteName"] = $item->siteName;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["rowCount"] = $item->totalEvents ? $item->totalEvents : 1;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["isVip"] = $item->isVip;

@@ -138,6 +138,12 @@ class Distribution extends Controller
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["rowCount"] = $item->totalEvents ? $item->totalEvents : 1;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["isVip"] = $item->isVip;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["events"][] = $item;
+        if (
+            $item->totalEvents < count($mappedData[$item->siteId]["tips"][$item->tipIdentifier]["events"]) && 
+            count($mappedData[$item->siteId]["tips"][$item->tipIdentifier]["events"]) > 1
+        ) {
+            array_pop($mappedData[$item->siteId]["tips"][$item->tipIdentifier]["events"]);
+        }
     }
 
     public function get() {}

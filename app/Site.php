@@ -134,6 +134,7 @@ class Site extends Model {
         ->when($emails_sort == "unsent", function ($query, $emails_sort) {
             return $query->where('isEmailSend', "=", 0);
         })
+        ->orderBy("distribution.eventId", "DESC")
         ->get();
         return $data;
     }

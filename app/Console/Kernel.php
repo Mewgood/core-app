@@ -12,6 +12,7 @@ use App\Console\Commands\SendMail;
 use App\Console\Commands\ProcessSubscriptions;
 use App\Console\Commands\ResetAutounit;
 use App\Console\Commands\AutounitGenerateMonthlyConfiguration;
+use App\Console\Commands\RemoveUnusedDistributions;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
@@ -33,7 +34,8 @@ class Kernel extends ConsoleKernel
         SendMail::class,
         ProcessSubscriptions::class,
         ResetAutounit::class,
-        AutounitGenerateMonthlyConfiguration::class
+        AutounitGenerateMonthlyConfiguration::class,
+        RemoveUnusedDistributions::class
     ];
 
     /**
@@ -78,5 +80,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('autounit:generate-monthly-config')
             ->monthly()
             ->appendOutputTo($filePath);
+            
+        $schedule->command("distribution:remove-unused")
+            ->dailyAt("00:01");
     }
 }

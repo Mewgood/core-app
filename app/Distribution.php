@@ -46,5 +46,12 @@ class Distribution extends Model {
         return $this->hasOne('App\AppResultStatus', 'id', 'statusId');
     }
 
-//    protected $hidden = [ ‘password’ ];
+    public static function removeUnused()
+    {
+        $today = gmdate("Y-m-d");
+        $from = strtotime($today . "-6 months"); //unix timestamp
+        $from = gmdate("Y-m-d", $from); // Y-m-d string format
+
+        Distribution::where("systemDate", "<", $from)->delete();
+    }
 }

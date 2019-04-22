@@ -107,24 +107,15 @@ class Distribution extends Controller
             $date = gmdate('Y-m-d');
 
         $data = Site::getSitesDistributions($date, $real_user_sort, $vip_user_sort, $emails_sort);
-        $currentTipIdentifier = "";
-        $currentSite = "";
-        $display = false;
 
         foreach ($data as $item) {
-            if ($currentTipIdentifier != $item->tipIdentifier || $currentSite != $item->siteId) {
-                $display = true;
-                $currentTipIdentifier = $item->tipIdentifier;
-                $currentSite = $item->siteId;
-            }
-            $this->mapSiteDistributions($item, $mappedData, $display);
-            $display = false;
+            $this->mapSiteDistributions($item, $mappedData);
         }
         
         return $mappedData;
     }
     
-    private function mapSiteDistributions($item, &$mappedData, $display) 
+    private function mapSiteDistributions($item, &$mappedData) 
     {
         $distributionIds = "";
         for ($i = 0; $i < $item->totalEvents; $i++) {
@@ -132,7 +123,6 @@ class Distribution extends Controller
         }
         $distributionIds = rtrim($distributionIds, ", ");
 
-        $item->display = $display;
         $item->distributionIds = $distributionIds;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["siteName"] = $item->siteName;
         $mappedData[$item->siteId]["tips"][$item->tipIdentifier]["rowCount"] = $item->totalEvents ? $item->totalEvents : 1;

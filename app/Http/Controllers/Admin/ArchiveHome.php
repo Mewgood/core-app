@@ -250,7 +250,7 @@ class ArchiveHome extends Controller
             if (!$e['isNoTip']) {
                 $e['statusName'] = $results[$e['statusId']]['statusName'];
                 $e['statusClass'] = $results[$e['statusId']]['statusClass'];
-                $e['predictionName'] = $predictions[$e['predictionId']]['name'];
+                //$e['predictionName'] = $predictions[$e['predictionId']]['name'];
             }
 
             // change team name in prediction

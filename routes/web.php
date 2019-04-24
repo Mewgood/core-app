@@ -1218,12 +1218,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string  $result
     // @param integer $statusId
     // @retun array()
-    $app->post('/event/update-result-status/{id}', function(Request $r, $id) use ($app) {
-        $result = $r->input('result');
-        $statusId = $r->input('statusId');
-
+    $app->post('/event/update-result-status', function(Request $r) use ($app) {
         $eventInstance = new \App\Http\Controllers\Admin\Event();
-        return $eventInstance->updateResultAndStatus($id, $result, $statusId);
+        return $eventInstance->updateBatchResultAndStatus($r->input('result'), $r->input('homeTeamId'), $r->input('awayTeamId'), $r->input('eventDate'));
     });
 
     // Events
@@ -1355,7 +1352,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string  $table
     // @param integer $associateEventId
     // @return array();
-    $app->get('/association/package/available/{table}/{associateEventId}/{date}', 'Admin\Association@getAvailablePackages');
+    $app->get('/association/package/available/{associateEventId}/{table}/{type}/{date}', 'Admin\Association@getAvailablePackages');
 
     /*
      * Distribution

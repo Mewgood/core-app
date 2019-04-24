@@ -134,7 +134,6 @@ class AutoUnitAddEvents extends CronCommand
                 if ($schedule["statusId"] != $matchWithResult->statusId) {
                     $message = "Invalid match result for schedule<" . $schedule["id"] . "> | Initial match<" . $schedule["match_id"] . ">";
                     $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
-                    echo $message . "\n";
 
                     $invalidMatches = json_decode($schedule["invalid_matches"]);
                     $invalidMatches[] = $matchWithResult->homeTeam . " - " . $matchWithResult->awayTeam . " - " . $matchWithResult->result  . " - " .$odd->predictionId;
@@ -179,8 +178,6 @@ class AutoUnitAddEvents extends CronCommand
                                             'to_distribute' => true,
                                             'result' => $matchWithResult->result
                                         ]);
-                    $message = "Valid match result for schedule<" . $schedule["id"] . "> | Match<" . $schedule["match_id"] . ">";
-                    echo $message . "\n";
 
                     \App\Models\Autounit\DailySchedule::find($schedule['id'])
                     ->update([
@@ -320,8 +317,6 @@ class AutoUnitAddEvents extends CronCommand
             }
             $this->incrementDistributedCounter($event["matchId"], 1);
         }
-
-        echo json_encode($info);
         
         $this->deleteEmptyAutounitAssociations();
         //$this->info(json_encode($info));
@@ -514,7 +509,6 @@ class AutoUnitAddEvents extends CronCommand
 
         // Try next event if there is no odds
         if (! count($odds)) {
-            echo "NO ODD: " . $event['id'] . "\n";
             return $this->getWinnerEvent($schedule, $this->unsetIndex($events, $index), $leagueId, $totalEvents);
         }
         // try to find correct status base on odd
@@ -721,7 +715,6 @@ class AutoUnitAddEvents extends CronCommand
             $matchModel->sites_distributed_counter == ($match->minCounter + $this->minimCondition) &&
             $match->minCounter + $this->minimCondition <= $this->maximumCondition
         ) {
-            echo "MINIM CONDITION TRUE FOR: " . $event["matchId"] . " ||||" . $matchModel->sites_distributed_counter . " === " . $match->minCounter . " + " .  $this->minimCondition  . "\n";  
             return false;
         }
         return true;
@@ -730,8 +723,6 @@ class AutoUnitAddEvents extends CronCommand
     private function incrementDistributedCounter(int $matchId , int $value) : void
     {
         $match = \App\Match::where("id", "=", $matchId)->increment("sites_distributed_counter", (int)$value);
-        $test = \App\Match::where("id", "=", $matchId)->first();
-        echo "INCREMENTED: " . $matchId . " COUNTER: " . $test->sites_distributed_counter . "\n";
     }
 
     private function checkScheduledMatchExists($match, $schedule, $odd)

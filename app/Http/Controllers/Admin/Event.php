@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Events\EventModel;
 use App\Match;
+use App\Console\Commands\AutoUnitAddEvents;
 
 class Event extends Controller
 {
@@ -28,9 +29,11 @@ class Event extends Controller
         $eventsIds = [];
 
         $ids = \App\Association::select('eventId')
-            ->distinct()
             ->where('eventId', '!=', '0')
             ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $date . "'")
+            ->groupBy("association.homeTeamId")
+            ->groupBy("association.awayTeamId")
+            ->groupBy("association.systemDate")
             ->get();
 
         foreach ($ids as $id)
@@ -390,6 +393,86 @@ class Event extends Controller
         ];
     }
 
+    public function updateBatchResultAndStatus($result, $homeTeamId, $awayTeamId, $eventDate) {
+
+        //  TODO check validity of result and status
+
+        $events = \App\Event::where("event.homeTeamId", "=", $homeTeamId)
+            ->where("event.awayTeamId", "=", $awayTeamId)
+            ->where("event.eventDate", "=", $eventDate)
+            ->get();
+        
+        if (!count($events))
+            return [
+                'type' => 'error',
+                'message' => "This event not exist anymore!",
+            ];
+            
+        $matchPredictionResults = [];
+        $i = 0;
+        
+        foreach ($events as $event) {
+            $statusByScore = new \App\Src\Prediction\SetStatusByScore($result, $event->predictionId);
+            $statusByScore->evaluateStatus();
+            $statusId = $statusByScore->getStatus();
+            
+            if ($statusId > 0) {
+                $eventInstance = new \App\Http\Controllers\Admin\Event();
+                $eventInstance->updateResultAndStatus($event->id, $result, $statusId);
+                $matchPredictionResults[$i]["predictionName"] = $event->predictionId;
+                $matchPredictionResults[$i]["value"] = $statusId;
+                $i++;
+            }
+            
+            // process subscriptions
+            $subscriptionInstance = new \App\Http\Controllers\Admin\Subscription();
+            $subscriptionInstance->processSubscriptions($event->id);
+            
+            // update associations
+            \App\Association::where('eventId', $event->id)->update([
+                'result' => $result,
+                'statusId' => $statusId,
+            ]);
+
+            // update distribution
+            \App\Distribution::where('eventId', $event->id)->update([
+                'result' => $result,
+                'statusId' => $statusId,
+            ]);
+
+            // update subscriptionTipHistory
+            \App\SubscriptionTipHistory::where('eventId', $event->id)->update([
+                'result' => $result,
+                'statusId' => $statusId,
+            ]);
+
+            // update archive home
+            \App\ArchiveBig::where('eventId', $event->id)->update([
+                'result' => $result,
+                'statusId' => $statusId,
+            ]);
+
+            // update update archive big
+            \App\ArchiveHome::where('eventId', $event->id)->update([
+                'result' => $result,
+                'statusId' => $statusId,
+            ]);
+        }
+        
+        $match = \App\Match::where("id", "=", $events[0]->matchId)->first();
+        $match->result = $result;
+        $match->prediction_results = json_encode($matchPredictionResults);
+        $match->update();
+        
+        $autoUnitCron = new AutoUnitAddEvents();
+        $autoUnitCron->fire($match);                
+
+        return [
+            'type' => 'success',
+            'message' =>"Prediction and status was succesfful updated.",
+        ];
+    }
+    
     /*
      * @return array()
      */

@@ -154,13 +154,12 @@ class Association extends Controller
         $packages = \App\Package::select(
                 "package.*",
                 DB::raw("
-                    package.tipsPerDay -
                     (
                         SELECT COUNT(distribution.id)
                         FROM distribution
                         WHERE distribution.packageId = package.id
                         AND distribution.systemDate = '" . $date . "'
-                    ) AS tipsDifference
+                    ) - package.tipsPerDay AS tipsDifference
                 "),
                 DB::raw("EXISTS 
                     (
@@ -219,7 +218,7 @@ class Association extends Controller
                     (float)$data['event']->odd >= (float)$autounit->minOdd && 
                     (float)$data['event']->odd <= (float)$autounit->maxOdd
                 ) {
-                    if ($type == "auFilled" || $type == "auUnfilled") {
+                    if ($type == "auFilled" || $type == "auUnfilled" || $type == "filled" || $type == "unfilled") {
                         $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     }
                 } else if (

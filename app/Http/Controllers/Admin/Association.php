@@ -223,11 +223,7 @@ class Association extends Controller
                         $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     }
                 } else if (
-                    ($type == "filled" || $type == "unfilled") && 
-                    (
-                        (float)$data['event']->odd >= (float)$autounit->minOdd && 
-                        (float)$data['event']->odd <= (float)$autounit->maxOdd
-                    )
+                    ($type == "filled" || $type == "unfilled")
                 ) {
                     $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                 } else ($type != "inelegible") {

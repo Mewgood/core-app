@@ -7,6 +7,7 @@ use App\Models\AssociationModel;
 use Illuminate\Http\Request;
 use App\Models\AutoUnit\MonthlySetting;
 use App\Models\AutoUnit\DailySchedule;
+use Illuminate\Support\Facades\DB;
 
 class Association extends Controller
 {
@@ -59,7 +60,7 @@ class Association extends Controller
     // @param integer $associateEventId
     // @param string | null $date
     // @return array();
-    public function getAvailablePackages($table, $associateEventId, $date = null)
+    public function getAvailablePackages(Request $request, $table, $associateEventId, $type, $date = null)
     {
         $data = [];
         $ineligiblePackageIds = [];
@@ -67,6 +68,13 @@ class Association extends Controller
 
         $data['event'] = \App\Association::find($associateEventId);
         $isVip = 0;
+        $sites = \App\Site::when($request->limit != null, function($query) use ($request) {
+            return $query->limit($request->limit);
+        })->when($request->offset, function($query) use ($request) {
+            return $query->offset($request->offset);
+        })->get()->toArray();
+
+        $siteIds = array_column($sites, "id");
 
         if (!$data['event'])
             return response()->json([
@@ -78,8 +86,10 @@ class Association extends Controller
         $section = ($table === 'run' || $table === 'ruv') ? 'ru': 'nu';
 
         $packageSection = \App\PackageSection::select('packageId')
+            ->join("package", "package.id", "package_section.packageId")
             ->where('section', $section)
             ->where('systemDate', $date)
+            ->whereIn("package.siteId", $siteIds)
             ->get();
         
         $packagesIds = [];
@@ -100,6 +110,7 @@ class Association extends Controller
             if (\App\Package::where('id', $id)->where('isVip', '1')->count())
                 unset($packagesIds[$k]);
         }
+
         // sort by event type tip or noTip
         foreach ($packagesIds as $k => $id) {
 
@@ -139,33 +150,64 @@ class Association extends Controller
 
         $keys = [];
         $increments = 0;
-        $packages = \App\Package::whereIn('id', $packagesIds)->get();
+
+        $packages = \App\Package::select(
+                "package.*",
+                DB::raw("
+                    package.tipsPerDay -
+                    (
+                        SELECT COUNT(distribution.id)
+                        FROM distribution
+                        WHERE distribution.packageId = package.id
+                        AND distribution.systemDate = '" . $date . "'
+                    ) AS tipsDifference
+                "),
+                DB::raw("EXISTS 
+                    (
+                        SELECT auto_unit_daily_schedule.id
+                        FROM auto_unit_daily_schedule
+                        WHERE auto_unit_daily_schedule.siteId = package.siteId
+                        AND auto_unit_daily_schedule.systemDate = '" . $date . "'
+                        GROUP BY auto_unit_daily_schedule.siteId
+                    ) AS auConfigured
+                ")
+            )
+            ->when($type == "auFilled" || $type == "filled", function($query) {
+                return $query->having("tipsDifference", ">=", 0);
+            })
+            ->when($type == "auUnfilled" || $type == "unfilled", function($query) {
+                return $query->having("tipsDifference", "<", 0);
+            })
+            ->when($type == "filled" || $type == "unfilled", function($query) {
+                return $query->having("auConfigured", "=", 0);
+            })
+            ->whereIn('id', $packagesIds)
+            ->get();
+
         $todayYM = gmdate("Y-m");
-        $todayYMD = gmdate("Y-m-d");
+        $data["sites"] = [];
         
-        $data['sites'][2] = Association::getUnAvailablePackages($packagesIds, $data, $date, $isVip, $section, $data['event']);
+        if ($type == "inelegible") {
+            $data['sites'] = Association::getUnAvailablePackages($siteIds, $data, $date, $isVip, $section, $data['event']);
+        } else {
+            foreach ($packages as $p) {
+                $site = \App\Site::find($p->siteId);
+                // create array
+                if (!array_key_exists($site->name, $keys)) {
+                    $keys[$site->name] = $increments;
+                    $increments++;
+                }
 
-        foreach ($packages as $p) {
+                // check if event alredy exists in tips distribution
+                $distributionExists = \App\Distribution::where('associationId', $data['event']->id)
+                    ->where('packageId', $p->id)
+                    ->count();
 
-            $site = \App\Site::find($p->siteId);
-            // create array
-            if (!array_key_exists($site->name, $keys)) {
-                $keys[$site->name] = $increments;
-                $increments++;
-            }
-
-            // check if event alredy exists in tips distribution
-            $distributionExists = \App\Distribution::where('associationId', $data['event']->id)
-                ->where('packageId', $p->id)
-                ->count();
-
-            // get number of associated events with package on event systemDate
-            $eventsExistsOnSystemDate = \App\Distribution::where('packageId', $p->id)
-                ->where('systemDate', $date)
-                ->count();
-            $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
-            
-            if ($section == "nu") {
+                // get number of associated events with package on event systemDate
+                $eventsExistsOnSystemDate = \App\Distribution::where('packageId', $p->id)
+                    ->where('systemDate', $date)
+                    ->count();
+                
                 $autounit = MonthlySetting::where("siteId", "=", $p->siteId)
                     ->where("tipIdentifier", "=", $p->tipIdentifier)
                     ->where("tableIdentifier", "=", $p->tableIdentifier)
@@ -177,59 +219,33 @@ class Association extends Controller
                     (float)$data['event']->odd >= (float)$autounit->minOdd && 
                     (float)$data['event']->odd <= (float)$autounit->maxOdd
                 ) {
-
-                    if ($tipsDifference >= 0) {
-                        $this->mapAssociationModalData($data, 3, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                    } else {
-                        $this->mapAssociationModalData($data, 4, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                    if ($type == "auFilled" || $type == "auUnfilled") {
+                        $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     }
-                } else if (!$autounit) {
-                    if ($tipsDifference < 0) {
-                        $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                    } else {
-                        $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                    }
-                } else {
-                    // not eligible
-                    $this->mapAssociationModalData($data, 2, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, false);
-                }
-            }
-            // 0 - unfilled
-            // 1 - filled
-            // 2 - inelegible
-            // 3 - AU filled
-            // 4 - AU unfilled
-            if ($section == "ru") {
-                if ($tipsDifference < 0) {
-                    $this->mapAssociationModalData($data, 0, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                } else {
-                    $this->mapAssociationModalData($data, 1, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
-                }
+                } else if (
+                    ($type == "filled" || $type == "unfilled") && 
+                    (
+                        (float)$data['event']->odd >= (float)$autounit->minOdd && 
+                        (float)$data['event']->odd <= (float)$autounit->maxOdd
+                    )
+                ) {
+                    $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
+                } else ($type != "inelegible") {
+                    $this->mapAssociationModalData($data, $site, $p, $p->tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true)
+                };
+                
             }
         }
 
-        if (!isset($data['sites'][0])) {
-            $data['sites'][0] = [];
+        if ($request->count) {
+            $count = [];
+            $count["count"] = count($data["sites"]);
+            return $count;
         }
-        if (!isset($data['sites'][1])) {
-            $data['sites'][1] = [];
-        }
-        if (!isset($data['sites'][2])) {
-            $data['sites'][2] = [];
-        }
-        if ($section == "nu") {
-            if (!isset($data['sites'][3])) {
-                $data['sites'][3] = [];
-            }
-            if (!isset($data['sites'][4])) {
-                $data['sites'][4] = [];
-            }
-        }
-        
         return $data;
     }
     
-    public static function getUnAvailablePackages($eligiblePackageIds, $association, $date, $isVip, $section, $event) {
+    public static function getUnAvailablePackages($siteIds, $association, $date, $isVip, $section, $event) {
         $data = [];
 
         $ineligiblePackages = \App\Package::select(
@@ -244,15 +260,15 @@ class Association extends Controller
             ->join("package_prediction", "package_prediction.packageId", "package.id")
             ->join("package_section", "package_section.packageId", "package.id")
             ->leftJoin("distribution", "distribution.packageId", "package.id")
-            ->whereNotIn('package.id', $eligiblePackageIds)
-            ->where("package.isVip", "=", $isVip)
-            ->where("package_section.section" , "=", $section)
+            ->where("package.isVip", "=", !$isVip)
+            ->where("package_section.section" , "!=", $section)
             ->where("package_section.systemDate" , "=", $date)
-            ->when($association['event']->isNoTip, function ($query, $date) { // event is no tip -> exclude packages who have tip events
+            ->when($association['event']->isNoTip, function ($query, $date) {
                 return $query->where("distribution.systemDate", $date)
-                    ->where("distribution.isNoTip", "=", 1);
+                    ->where("distribution.isNoTip", "=", 0);
             })
             ->where("package_prediction.predictionIdentifier", "!=", $association['event']->predictionId)
+            ->whereIn('site.id', $siteIds)
             ->groupBy("package.id")
             ->get();
 
@@ -269,7 +285,7 @@ class Association extends Controller
 
             $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $p->siteName;
-            $data['sites'][0][$p->siteName]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $event->to_distribute;
+            $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $event->to_distribute;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["eligible"] = false;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
             $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
@@ -450,13 +466,13 @@ class Association extends Controller
         ]);
     }
     
-    private function mapAssociationModalData(&$data, $eligibilityCase, $site, $package, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, $eligible)
+    private function mapAssociationModalData(&$data, $site, $package, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, $eligible)
     {
-        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["siteName"] = $site->name;
-        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
-        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["eligible"] = $eligible;
-        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]["tipsDifference"] = $tipsDifference;
-        $data['sites'][$eligibilityCase][$site->name]['tipIdentifier'][$package->tipIdentifier]['packages'][] = [
+        $data['sites'][$site->name]['tipIdentifier'][$package->tipIdentifier]["siteName"] = $site->name;
+        $data['sites'][$site->name]['tipIdentifier'][$package->tipIdentifier]["toDistribute"] = $data['event']->to_distribute;
+        $data['sites'][$site->name]['tipIdentifier'][$package->tipIdentifier]["eligible"] = $eligible;
+        $data['sites'][$site->name]['tipIdentifier'][$package->tipIdentifier]["tipsDifference"] = $tipsDifference;
+        $data['sites'][$site->name]['tipIdentifier'][$package->tipIdentifier]['packages'][] = [
             'id' => $package->id,
             'name' => $package->name,
             'tipsPerDay' => $package->tipsPerDay,

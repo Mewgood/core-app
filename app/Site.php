@@ -67,7 +67,7 @@ class Site extends Model {
         return $data;
     }
     
-    public static function getSitesDistributions($date, $real_user_sort = 0, $vip_user_sort = 0, $emails_sort = 0)
+    public static function getSitesDistributions($date, $real_user_sort = 0, $vip_user_sort = 0, $emails_sort = 0, $no_tip_vip = 0)
     {
         $data = Site::select(
             "site.id AS siteId",
@@ -122,17 +122,22 @@ class Site extends Model {
         ->when($real_user_sort, function ($query, $real_user_sort) {
             return $query->where('package_section.section', "=", $real_user_sort);
         })
-        ->when($vip_user_sort == "notvip", function ($query, $vip_user_sort) {
+        ->when($vip_user_sort == "notvip", function ($query) {
             return $query->where('package.isVip', "=", 0);
         })
-        ->when($vip_user_sort == "vip", function ($query, $vip_user_sort) {
+        ->when($vip_user_sort == "vip", function ($query) {
             return $query->where('package.isVip', "=", 1);
         })
-        ->when($emails_sort == "sent", function ($query, $emails_sort) {
+        ->when($emails_sort == "sent", function ($query) {
             return $query->where('isEmailSend', "=", 1);
         })
-        ->when($emails_sort == "unsent", function ($query, $emails_sort) {
+        ->when($emails_sort == "unsent", function ($query) {
             return $query->where('isEmailSend', "=", 0);
+        })
+        ->when($no_tip_vip, function ($query) {
+            $query->where('distribution.isVip', "=", 1);
+            $query->where("distribution.result", "!=", "");
+            $query->orWhere("distribution.isVip", "=", 0);
         })
         ->orderBy("distribution.eventId", "DESC")
         ->get();

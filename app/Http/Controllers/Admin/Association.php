@@ -167,6 +167,7 @@ class Association extends Controller
                         FROM auto_unit_daily_schedule
                         WHERE auto_unit_daily_schedule.siteId = package.siteId
                         AND auto_unit_daily_schedule.systemDate = '" . $date . "'
+                        AND package.paused_autounit = 0
                         GROUP BY auto_unit_daily_schedule.siteId
                     ) AS auConfigured
                 ")
@@ -178,14 +179,17 @@ class Association extends Controller
                 return $query->having("tipsDifference", "<", 0);
             })
             ->when($type == "filled" || $type == "unfilled", function($query) {
-                return $query->having("auConfigured", "=", 0);
+                return $query->where("package.paused_autounit", "=", 1);
+            })
+            ->when($type == "auFilled" || $type == "auUnfilled", function($query) {
+                return $query->where("package.paused_autounit", "=", 0);
             })
             ->whereIn('id', $packagesIds)
             ->get();
-
+    
         $todayYM = gmdate("Y-m");
         $data["sites"] = [];
-        
+
         if ($type == "inelegible") {
             $data['sites'] = Association::getUnAvailablePackages($siteIds, $data, $date, $isVip, $section, $data['event']);
         } else {
@@ -252,18 +256,21 @@ class Association extends Controller
                 "site.name AS siteName"
             )
             ->join("site", "site.id", "package.siteId")
-            ->join("package_prediction", "package_prediction.packageId", "package.id")
+            ->leftJoin("package_prediction", function($query) use ($association) {
+                $query->on("package_prediction.packageId", "package.id");
+                $query->where("package_prediction.predictionIdentifier", "=", $association['event']->predictionId);
+            })
             ->join("package_section", "package_section.packageId", "package.id")
             ->leftJoin("distribution", "distribution.packageId", "package.id")
-            ->where("package.isVip", "=", !$isVip)
-            ->where("package_section.section" , "!=", $section)
+            ->where("package.isVip", "=", $isVip)
+            ->where("package_section.section" , "=", $section)
             ->where("package_section.systemDate" , "=", $date)
             ->when($association['event']->isNoTip, function ($query, $date) {
                 return $query->where("distribution.systemDate", $date)
-                    ->where("distribution.isNoTip", "=", 0);
+                    ->where("distribution.isNoTip", "=", 1);
             })
-            ->where("package_prediction.predictionIdentifier", "!=", $association['event']->predictionId)
             ->whereIn('site.id', $siteIds)
+            ->whereNull("package_prediction.id")
             ->groupBy("package.id")
             ->get();
 

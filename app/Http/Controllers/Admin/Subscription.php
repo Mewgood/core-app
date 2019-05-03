@@ -162,16 +162,19 @@ class Subscription extends Controller
             ->whereBetween("systemDate", [$dateStart, $dateEnd])
             ->where("provider", "=", "autounit")
             ->where("tipIdentifier", "=", $package->tipIdentifier)
+            ->where("tableIdentifier", "=", $package->tableIdentifier)
             ->delete();
         if ($dateStart && $dateEnd) {
             \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
                 ->whereBetween("systemDate", [$dateStart, $dateEnd])
                 ->where("tipIdentifier", "=", $package->tipIdentifier)
+                ->where("tableIdentifier", "=", $package->tableIdentifier)
                 ->delete();
         } else {
             \App\Models\AutoUnit\DailySchedule::where("siteId", "=", $siteId)
                 ->where("systemDate", $today)
                 ->where("tipIdentifier", "=", $package->tipIdentifier)
+                ->where("tableIdentifier", "=", $package->tableIdentifier)
                 ->delete();
         }
 

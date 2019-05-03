@@ -101,12 +101,13 @@ class Distribution extends Controller
         $real_user_sort = strtolower($r->input('real_user_sort'));
         $vip_user_sort = strtolower($r->input('vip_user_sort'));
         $emails_sort =  strtolower($r->input('emails_sort'));
+        $no_tip_vip =  $r->input('no_tip_vip');
 
         // default set current date GMT
         if ($date === null || $date == 0)
             $date = gmdate('Y-m-d');
 
-        $data = Site::getSitesDistributions($date, $real_user_sort, $vip_user_sort, $emails_sort);
+        $data = Site::getSitesDistributions($date, $real_user_sort, $vip_user_sort, $emails_sort, $no_tip_vip);
 
         foreach ($data as $item) {
             $this->mapSiteDistributions($item, $mappedData);

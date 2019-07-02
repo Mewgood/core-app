@@ -5,6 +5,7 @@ namespace App\Models\AutoUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+use App\ArchiveBig;
 use App\Site;
 
 class DailySchedule extends Model {
@@ -30,46 +31,41 @@ class DailySchedule extends Model {
 
     public static function getMonthlyStatistics(int $siteId)
     {
-        $data = DailySchedule::select(
+        $data = ArchiveBig::select(
             DB::raw("
                 SUM(
                     CASE
-                        WHEN auto_unit_daily_schedule.statusId = 1 THEN 1 ELSE 0
+                        WHEN archive_big.statusId = 1 THEN 1 ELSE 0
                     END
                 ) AS win"
             ),
             DB::raw("
                 SUM(
                     CASE
-                        WHEN auto_unit_daily_schedule.statusId = 2 THEN 1 ELSE 0
+                        WHEN archive_big.statusId = 2 THEN 1 ELSE 0
                     END
                 ) AS loss"
             ),
             DB::raw("
                 SUM(
                     CASE
-                        WHEN auto_unit_daily_schedule.statusId = 3 THEN 1 ELSE 0
+                        WHEN archive_big.statusId = 3 THEN 1 ELSE 0
                     END
                 ) AS draw"
             ),
             DB::raw("
                 SUM(
                     CASE
-                        WHEN package.isVip = 1 THEN 1 ELSE 0
+                        WHEN archive_big.isVip = 1 THEN 1 ELSE 0
                     END
                 ) AS vip"
             ),
-            "auto_unit_daily_schedule.date"
+            DB::raw('DATE_FORMAT(archive_big.systemDate, "%Y-%m") AS date')
         )
-        ->join("package", function ($query) {
-            $query->on("package.siteId", "=", "auto_unit_daily_schedule.siteId");
-            $query->on("package.tipIdentifier", "=", "auto_unit_daily_schedule.tipIdentifier");
-            $query->on("package.tableIdentifier", "=", "auto_unit_daily_schedule.tableIdentifier");
-        })
-        ->whereRaw("auto_unit_daily_schedule.systemDate >= DATE_ADD(CURDATE(), INTERVAL -5 MONTH)")
-        ->whereRaw('DATE_FORMAT(auto_unit_daily_schedule.systemDate, "%Y-%m") < DATE_FORMAT(CURDATE(), "%Y-%m")')
-        ->where("auto_unit_daily_schedule.siteid" , "=", $siteId)
-        ->groupBy(DB::raw('DATE_FORMAT(auto_unit_daily_schedule.systemDate, "%Y-%m")'))
+        ->whereRaw("archive_big.systemDate >= DATE_ADD(CURDATE(), INTERVAL -5 MONTH)")
+        ->whereRaw('DATE_FORMAT(archive_big.systemDate, "%Y-%m") < DATE_FORMAT(CURDATE(), "%Y-%m")')
+        ->where("archive_big.siteId" , "=", $siteId)
+        ->groupBy(DB::raw('DATE_FORMAT(archive_big.systemDate, "%Y-%m")'))
         ->get();
 
         foreach ($data as $item) {

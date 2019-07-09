@@ -16,7 +16,7 @@ TARGZ=$FILE.tar.gz
 source $DIR/../../.env;
 
 # create file
-docker exec $DB_CONTAINER /usr/bin/mysqldump -u $DB_ROOT_USER --password=$DB_ROOT_PASS $DB_DATABASE > $FILE
+mysqldump -u $DB_ROOT_USER --password=$DB_ROOT_PASS $DB_DATABASE > $FILE
 
 tar -cvzf $STORAGE/${TODAY_YMD}_monthly.sql.tar.gz $FILE
 

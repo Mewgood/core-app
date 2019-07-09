@@ -19,7 +19,7 @@ FILE_ID=""
 source $DIR/../../.env;
 
 # create file
-docker exec $DB_CONTAINER /usr/bin/mysqldump -u $DB_ROOT_USER --password=$DB_ROOT_PASS $DB_DATABASE > $FILE
+mysqldump -u $DB_ROOT_USER --password=$DB_ROOT_PASS $DB_DATABASE > $FILE
 
 tar -cvzf $STORAGE/${TODAY_YMD}_daily.sql.tar.gz $FILE
 
@@ -59,6 +59,9 @@ for j in `gdrive list --no-header --query "trashed = false and parents in '$GDRI
                 #Delete the file if it is older than 15 days
                 if [ $FILE_DATE -lt $PAST_15_DAYS ] ; then
                     echo `gdrive delete $FILE_ID`
+                else
+                    echo 'NOT IN THE PAST 15 DAYS'
+                    echo $FILE_ID
                 fi
             else
                 echo "API calls exceeded."

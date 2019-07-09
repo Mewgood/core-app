@@ -13,6 +13,7 @@ use App\Console\Commands\ProcessSubscriptions;
 use App\Console\Commands\ResetAutounit;
 use App\Console\Commands\AutounitGenerateMonthlyConfiguration;
 use App\Console\Commands\RemoveUnusedDistributions;
+use App\Console\Commands\DistributionKeepLastMonth;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
@@ -35,7 +36,8 @@ class Kernel extends ConsoleKernel
         ProcessSubscriptions::class,
         ResetAutounit::class,
         AutounitGenerateMonthlyConfiguration::class,
-        RemoveUnusedDistributions::class
+        RemoveUnusedDistributions::class,
+        DistributionKeepLastMonth::class
     ];
 
     /**
@@ -82,6 +84,9 @@ class Kernel extends ConsoleKernel
             ->appendOutputTo($filePath);
             
         $schedule->command("distribution:remove-unused")
+            ->dailyAt("00:01");
+
+        $schedule->command("distribution:keep-last-month")
             ->dailyAt("00:01");
     }
 }

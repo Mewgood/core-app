@@ -185,6 +185,7 @@ class Association extends Controller
                 return $query->where("package.paused_autounit", "=", 0);
             })
             ->whereIn('id', $packagesIds)
+            ->orderBy('tipsDifference', 'ASC')
             ->get();
     
         $todayYM = gmdate("Y-m");

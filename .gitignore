@@ -4,6 +4,7 @@
 Homestead.json
 Homestead.yaml
 .env
+error_log
 
 /backups/mysql/storage/*
 !/backups/mysql/storage/.gitkeep

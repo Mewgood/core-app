@@ -59,6 +59,9 @@ for j in `gdrive list --no-header --query "trashed = false and parents in '$GDRI
                 #Delete the file if it is older than 15 days
                 if [ $FILE_DATE -lt $PAST_15_DAYS ] ; then
                     echo `gdrive delete $FILE_ID`
+                else
+                    echo 'NOT IN THE PAST 15 DAYS'
+                    echo $FILE_ID
                 fi
             else
                 echo "API calls exceeded."

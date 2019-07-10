@@ -60,7 +60,7 @@ class Association extends Controller
     // @param integer $associateEventId
     // @param string | null $date
     // @return array();
-    public function getAvailablePackages(Request $request, $table, $associateEventId, $type, $date = null)
+    public function getAvailablePackages(Request $request, $table, $associateEventId, $type, $date = null, $previousSites = [])
     {
         $data = [];
         $ineligiblePackageIds = [];
@@ -189,10 +189,10 @@ class Association extends Controller
             ->get();
     
         $todayYM = gmdate("Y-m");
-        $data["sites"] = [];
+        $data["sites"] = $previousSites;
 
         if ($type == "inelegible") {
-            $data['sites'] = Association::getUnAvailablePackages($siteIds, $data, $date, $isVip, $section, $data['event']);
+            $data['sites'] = array_merge($data['sites'], Association::getUnAvailablePackages($siteIds, $data, $date, $isVip, $section, $data['event']));
         } else {
             foreach ($packages as $p) {
                 $site = \App\Site::find($p->siteId);
@@ -242,6 +242,14 @@ class Association extends Controller
             $count["count"] = count($data["sites"]);
             return $count;
         }
+
+        if (count($data["sites"]) != 10 && count($sites)) {
+            $request->merge(['offset' => $request->offset + $request->limit]);
+            $request->merge(['limit' => $request->limit - count($data["sites"])]);
+    
+            return $this->getAvailablePackages($request, $table, $associateEventId, $type, $date, $data["sites"]);
+        }
+        $data["offset"] = $request->offset;
         return $data;
     }
     

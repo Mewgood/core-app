@@ -245,7 +245,7 @@ class Association extends Controller
 
         if (count($data["sites"]) != 10 && count($sites)) {
             $request->merge(['offset' => $request->offset + $request->limit]);
-            $request->merge(['limit' => 10 - count($data["sites"])]);
+            $request->merge(['limit' => $request->limit - count($data["sites"])]);
     
             return $this->getAvailablePackages($request, $table, $associateEventId, $type, $date, $data["sites"]);
         }

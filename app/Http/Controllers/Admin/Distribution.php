@@ -816,10 +816,7 @@ class Distribution extends Controller
                         'type'   => 'archiveHome'
                     ]);
 
-                \App\Distribution::where("eventId", "=", $distribution->eventId)
-                    ->where("provider", "=", "autounit")
-                    ->where("tipIdentifier", "=", $distribution->tipIdentifier)
-                    ->delete();
+                $distribution->delete();
                 $distributions = \App\Distribution::where("eventId", "=", $distribution->eventId)
                     ->get();
 

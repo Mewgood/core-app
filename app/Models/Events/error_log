@@ -1,0 +1,1 @@
+[11-Jul-2019 04:23:03 Europe/Bucharest] PHP Fatal error:  Class 'Illuminate\Database\Eloquent\Model' not found in /home/btclmng/public_html/dev/server/app/Models/Events/Odd.php on line 5

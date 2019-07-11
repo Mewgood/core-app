@@ -1,0 +1,1 @@
+[11-Jul-2019 05:38:47 Europe/Bucharest] PHP Fatal error:  Class 'Illuminate\Database\Eloquent\Model' not found in /home/btclmng/public_html/dev/server/app/Models/League/Alias.php on line 5

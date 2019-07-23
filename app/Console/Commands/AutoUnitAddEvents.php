@@ -10,7 +10,6 @@ class AutoUnitAddEvents extends CronCommand
     protected $description = 'Add events according to autounit schedule.';
 
     private $systemDate;
-    private $todayEvents = [];
     private $todayAdminPoolEvents = [];
 
     private $allLeagues = [];
@@ -48,7 +47,7 @@ class AutoUnitAddEvents extends CronCommand
         // load today finished events
         $this->setTodayEvents();
 
-        if (! count($this->todayEvents)) {
+        if (! count($this->todayAdminPoolEvents)) {
 
             $info['message'] = 'There is no finished events yet';
 
@@ -567,15 +566,8 @@ class AutoUnitAddEvents extends CronCommand
     // @return void
     private function setTodayEvents()
     {
-         $events = \App\Match::where('eventDate', 'like', '%' . $this->systemDate . '%')
-            ->get()
-            ->toArray();
-
         $adminPoolEvents = AdminPool::getAutoUnitPoolMatches($this->systemDate);
 
-        foreach ($events as $event) {
-            $this->todayEvents[$event['leagueId']][] = $event;
-        }
         foreach ($adminPoolEvents as $adminPoolEvent) {
             $this->todayAdminPoolEvents[$adminPoolEvent["leagueId"]][] = $adminPoolEvent;
         }

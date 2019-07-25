@@ -10,7 +10,6 @@ class AutoUnitAddEvents extends CronCommand
     protected $description = 'Add events according to autounit schedule.';
 
     private $systemDate;
-    private $todayEvents = [];
     private $todayAdminPoolEvents = [];
 
     private $allLeagues = [];
@@ -48,7 +47,7 @@ class AutoUnitAddEvents extends CronCommand
         // load today finished events
         $this->setTodayEvents();
 
-        if (! count($this->todayEvents)) {
+        if (! count($this->todayAdminPoolEvents)) {
 
             $info['message'] = 'There is no finished events yet';
 
@@ -219,64 +218,9 @@ class AutoUnitAddEvents extends CronCommand
                         'info' => json_encode(["Site: " . $site->name . " could not find any event in the admin pool for tip: " . $schedule['tipIdentifier']]),
                     ]);
                 }
-                
-                $this->minimCondition = 0;
-                $this->maximumCondition = 0;
-
-                do {
-                    $event = $this->chooseEvent($schedule, $leagueArr, $this->todayEvents);
-                    $this->minimCondition += 1;
-                } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
+                continue;
             } else {
                 $this->isFromAdminPool = 1;
-            }
-
-            if ($event == null) {
-
-                // add log if not exists or it is solved
-                $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-associated-leagues' . $schedule['tipIdentifier']);
-                if (! \App\Models\Log::where('identifier', $checksum)->where('status', 1)->count()) {
-                    $site = \App\Site::find($schedule['siteId']);
-                    \App\Models\Log::create([
-                        'type' => 'warning',
-                        'module' => 'autounit',
-                        'identifier' => $checksum,
-                        'status' => 1,
-                        'info' => json_encode(["Site: " . $site->name . " not find any event in associated leagues for tip: " . $schedule['tipIdentifier'] . ", will try to find an event in all leagues"]),
-                    ]);
-                }
-
-                $this->minimCondition = 0;
-                $this->maximumCondition = 0;
-
-                // try with all leagues
-                do {
-                    $event = $this->chooseEvent($schedule, $this->allLeagues, $this->todayEvents);
-                    $this->minimCondition += 1;
-                } while (($this->minimCondition <= $this->maximumCondition) && $event == null);
-            }
-
-            if ($event == null) {
-                // add log if not exists or it is solved
-                $checksum = md5($schedule['id'] . $schedule['siteId'] . 'autounit-all-leagues' . $schedule['tipIdentifier']);
-                if (! \App\Models\Log::where('identifier', $checksum)->where('status', 1)->count()) {
-                    $site = \App\Site::find($schedule['siteId']);
-                    \App\Models\Log::create([
-                        'type' => 'panic',
-                        'module' => 'autounit',
-                        'identifier' => $checksum,
-                        'status' => 1,
-                        'info' => json_encode(["Site: " . $site->name . " not find any event in all leagues for tip: " . $schedule['tipIdentifier']]),
-                    ]);
-                }
-
-                \App\Models\Autounit\DailySchedule::find($schedule['id'])
-                    ->update([
-                        'status' => 'error',
-                        'info'   => json_encode(['Not find events in all leagues']),
-                    ]);
-
-                continue;
             }
 
             $info['created']++;
@@ -622,15 +566,8 @@ class AutoUnitAddEvents extends CronCommand
     // @return void
     private function setTodayEvents()
     {
-         $events = \App\Match::where('eventDate', 'like', '%' . $this->systemDate . '%')
-            ->get()
-            ->toArray();
-
         $adminPoolEvents = AdminPool::getAutoUnitPoolMatches($this->systemDate);
 
-        foreach ($events as $event) {
-            $this->todayEvents[$event['leagueId']][] = $event;
-        }
         foreach ($adminPoolEvents as $adminPoolEvent) {
             $this->todayAdminPoolEvents[$adminPoolEvent["leagueId"]][] = $adminPoolEvent;
         }

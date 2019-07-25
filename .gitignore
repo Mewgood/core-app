@@ -8,3 +8,4 @@ error_log
 
 /backups/mysql/storage/*
 !/backups/mysql/storage/.gitkeep
+error_log

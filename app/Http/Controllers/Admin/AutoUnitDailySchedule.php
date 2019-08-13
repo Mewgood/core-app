@@ -38,10 +38,9 @@ class AutoUnitDailySchedule extends Controller
             ->when($request->site, function($query, $site) {
                 return $query->where("siteId", "=", $site);
             })
-            ->where(function($query) {
-                $query->where("manual_pause", "=", 0)
-                    ->where("paused_autounit", "=", 0)
-                    ->orWhere("manual_pause", "=", 1);
+            ->where(function($query) use ($request) {
+                $query->where("paused_autounit", "=", $request->state)
+                    ->orWhere("manual_pause", "=", $request->state);
             })
             ->update(["paused_autounit" => !$request->state, "manual_pause" => $request->manual_pause]);
 

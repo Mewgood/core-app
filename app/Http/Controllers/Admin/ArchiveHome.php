@@ -269,11 +269,11 @@ class ArchiveHome extends Controller
             }
             $e['packageIdentifier'] = $package->identifier;
             $e['vipFlag'] = $vipFlags[$e['packageId']];
+            $e['eventDate'] = $e['systemDate'];
 
             $table = $e['tableIdentifier'];
             $data[$table][] = $e;
         }
-
         return $data;
     }
 }

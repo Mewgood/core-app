@@ -52,7 +52,6 @@ class AutoUnitAddEvents extends CronCommand
             $info['message'] = 'There is no finished events yet';
 
             $this->info(json_encode($info));
-            $this->stopCron($cron, $info);
             return true;
         }
 

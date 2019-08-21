@@ -141,12 +141,13 @@ class Site extends Model {
                     $innerQuery->where('package_section.section', "!=", "nu");
                     $innerQuery->where('distribution.isVip', "!=", 1);
                 });
-                $query->orWhere('distribution.isNoTip', "=", 0);
                 $query->orWhere(function($innerQuery) {
                     $innerQuery->where('distribution.isNoTip', "=", 1);
                     $innerQuery->where('distribution.isVip', "=", 1);
                     $innerQuery->where('package_section.section', "=", "ru");
                 });
+                $query->orWhereNull('distribution.id');
+                $query->orWhere('distribution.isNoTip', "=", 0);
                 $query->orWhere('distribution.result', "!=", "");
             });
         })

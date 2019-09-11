@@ -22,10 +22,9 @@ class AutoUnitAddEvents extends CronCommand
 
     private $SiteAssocEvents = [];
 
-    public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null)
+    public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null, $postponed = false)
     {
-        //$cron = $this->startCron();
-        if ($matchWithResult !== null) {
+        if ($matchWithResult !== null || $postponed) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
             $this->systemDate = gmdate('Y-m-d', strtotime($matchWithResult->eventDate));
             $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId, $scheduleId);
@@ -130,7 +129,6 @@ class AutoUnitAddEvents extends CronCommand
                     }
                 }
                 if ($schedule["statusId"] != $matchWithResult->statusId) {
-                    $message = "Invalid match result for schedule<" . $schedule["id"] . "> | Initial match<" . $schedule["match_id"] . ">";
                     $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
 
                     $invalidMatches = json_decode($schedule["invalid_matches"]);
@@ -185,14 +183,28 @@ class AutoUnitAddEvents extends CronCommand
                     ]);
                     continue;
                 }
+            } else if ($matchWithResult !== null && $postponed) {
+                $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
+
+                $invalidMatches = json_decode($schedule["invalid_matches"]);
+                $invalidMatches[] = $matchWithResult->homeTeam . " - " . $matchWithResult->awayTeam . " - " . $odd->predictionId . " - POSTPONED";
+                
+                \App\Models\Autounit\DailySchedule::find($schedule['id'])
+                ->update([
+                    'invalid_matches'   => json_encode($invalidMatches)
+                ]);
+                
+                $this->incrementDistributedCounter($matchWithResult["id"], -1);
+                $this->fire($matchWithResult, true, $schedule["id"]);
+                continue;
             }
             
             if ($changeMatch) {
                 // delete the events for the invalid match
                 // if none of the autounit schedules have it
                 $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
-                $this->checkScheduledMatchExists($matchWithResult, $schedule, $odd);
                 $this->deleteInvalidDistribution($matchWithResult, $schedule, $odd);
+                $this->checkScheduledMatchExists($matchWithResult, $schedule, $odd);
             }
             
             // the auto-unit first checks in the admin-pool list of events
@@ -668,8 +680,15 @@ class AutoUnitAddEvents extends CronCommand
                         ->where("id", "!=", $schedule["id"])
                         ->exists();
 
-        if (!$scheduledMatch) {
-            $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
+        $distributedMatch = \App\Distribution::where("systemDate", "=", $schedule["systemDate"])
+            ->where('leagueId', $match["leagueId"])
+            ->where("homeTeamId", "=", $match["homeTeamId"])
+            ->where("awayTeamId", "=", $match["awayTeamId"])
+            ->exists();
+
+        $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
+
+        if (!$scheduledMatch && !$distributedMatch) {
             \App\Event::where('matchId', $match->id)
                 ->where('provider', '=', 'autounit')
                 ->where('predictionId', '=', $odd->predictionId)
@@ -689,6 +708,7 @@ class AutoUnitAddEvents extends CronCommand
             ->where("awayTeamId", "=", $match["awayTeamId"])
             ->where("provider", "=", "autounit")
             ->where("predictionId", "=", $odd["predictionId"])
+            ->where("to_distribute", "=", 0)
             ->delete();
     }
     

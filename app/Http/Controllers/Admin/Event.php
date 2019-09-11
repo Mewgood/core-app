@@ -561,4 +561,9 @@ class Event extends Controller
 
         return $where;
     }
+
+    public function postpone($eventId)
+    {
+        return EventModel::postpone($eventId);
+    }
 }

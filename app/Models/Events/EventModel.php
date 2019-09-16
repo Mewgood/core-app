@@ -3,7 +3,11 @@
 namespace App\Models\Events;
 
 use Illuminate\Database\Eloquent\Model;
+
 use App\Match;
+use App\Association;
+use App\Distribution;
+use App\Console\Commands\AutoUnitAddEvents;
 
 class EventModel extends Model
 {
@@ -202,6 +206,51 @@ class EventModel extends Model
             'data' => $event,
             'type' => 'success',
             'message' => "This event is correct",
+        ];
+    }
+
+    public static function postpone($eventId)
+    {
+        $event = \App\Event::find($eventId);
+        $systemDate = date("Y-m-d", strtotime($event->eventDate));
+    
+        \App\Event::where("homeTeamId", "=", $event->homeTeamId)
+            ->where("awayTeamId", "=", $event->awayTeamId)
+            ->where("leagueId", "=", $event->leagueId)
+            ->whereRaw("DATE_FORMAT(eventDate, '%Y-%m-%d') = '" . $systemDate . "'")
+            ->update([
+                "statusId" => 4
+            ]);
+
+        Distribution::where("homeTeamId", "=", $event->homeTeamId)
+            ->where("awayTeamId", "=", $event->awayTeamId)
+            ->where("leagueId", "=", $event->leagueId)
+            ->where("systemDate", "=", $systemDate)
+            ->update([
+                "statusId" => 4
+            ]);
+
+        Association::where("homeTeamId", "=", $event->homeTeamId)
+            ->where("awayTeamId", "=", $event->awayTeamId)
+            ->where("leagueId", "=", $event->leagueId)
+            ->where("systemDate", "=", $systemDate)
+            ->update([
+                "statusId" => 4
+            ]);
+
+        $match = Match::find($event->matchId);
+
+        if ($match) {
+            $match->is_postponed = 1;
+            $match->update();
+    
+            $autoUnitCron = new AutoUnitAddEvents();
+            $autoUnitCron->fire($match, true, null, true);  
+        }
+
+        return [
+            'type' => 'success',
+            'message' => 'Match was postponed'
         ];
     }
 }

@@ -1254,6 +1254,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post('/event/create-manually', 'Admin\Event@createManual');
     $app->post('/event/create-manually-bulk', 'Admin\Event@createManualBulk');
+
+    $app->get('/event/{eventId}/postpone', 'Admin\Event@postpone');
 	
 	
     /*

@@ -70,21 +70,21 @@ class Kernel extends ConsoleKernel
         $schedule->command('distribution:pre-send')
             ->everyMinute()
             ->appendOutputTo($filePath);
-        
+
         // send every scheduled emails
         $schedule->command('email:send')
             ->everyMinute()
             ->appendOutputTo($filePath);
-            
+
         $schedule->command('publish:archives')
             ->everyMinute()
             ->appendOutputTo($filePath);
-        
+
         // autogenerate autounit at the start of a month
         $schedule->command('autounit:generate-monthly-config')
             ->monthly()
             ->appendOutputTo($filePath);
-            
+
         $schedule->command("distribution:remove-unused")
             ->dailyAt("00:01");
 
@@ -93,5 +93,28 @@ class Kernel extends ConsoleKernel
 
         $schedule->command("logs:remove-autounit")
             ->dailyAt("00:01");
+
+        // send events to archive
+        $schedule->command("publish:distribution")
+            ->everyFiveMinutes();
+
+        // mark available events sent in distribution
+        $schedule->command('distribution:pre-send')
+            ->everyMinute();
+
+        // new events from portal
+        $schedule->command("events:import-new")
+            ->everyFiveMinutes();
+
+        // get results from feed
+        $schedule->command("events:set-result")
+            ->appendOutputTo($filePath)
+            ->everyFiveMinutes();
+
+        $schedule->command("publish:archives")
+            ->everyMinute();
+
+        $schedule->command("autounit:add-events")
+            ->dailyAt("12:00");
     }
 }

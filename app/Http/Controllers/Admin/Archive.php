@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\ArchiveHome;
 use Illuminate\Support\Facades\DB;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 class Archive extends Controller
 {
@@ -17,6 +19,10 @@ class Archive extends Controller
     // @return array()
     public function publish($ids)
     {
+        $currentDate = date("Y-m-d", time());
+        $log = new Logger($currentDate . '_automatic_publish');
+        $log->pushHandler(new StreamHandler(storage_path('logs/' . $currentDate . '_automatic_publish.log')), Logger::INFO);
+
         $alreadyPublish = 0;
         $inserted = 0;
         $notHaveResultOrStatus = 0;
@@ -59,8 +65,36 @@ class Archive extends Controller
                 $distribution->eventDate = $distribution->systemDate;
 
             $distribution->isPublish = 1;
-            if (! $distribution->publishTime)
+            if (! $distribution->publishTime) {
                 $distribution->publishTime = time();
+                $log->log(100, json_encode([
+                    "packageId"             => $distribution->packageId,
+                    "tableIdentifier"       => $distribution->tableIdentifier,
+                    "tipIdentifier"         => $distribution->tipIdentifier,
+                    "match"                 => $distribution->homeTeam . " - " . $distribution->awayTeam,
+                    "result"                => $distribution->result,
+                    "statusId"              => $distribution->statusId,
+                    "publishTime"           => $distribution->publishTime,
+                    "systemDate"            => $distribution->systemDate,
+                    "siteId"                => $distribution->siteId,
+                    "message"               => "Distribution has no publish time, set it to current time",
+                    "step"                  => 100
+                ]));
+            } else {
+                $log->log(100, json_encode([
+                    "packageId"             => $distribution->packageId,
+                    "tableIdentifier"       => $distribution->tableIdentifier,
+                    "tipIdentifier"         => $distribution->tipIdentifier,
+                    "match"                 => $distribution->homeTeam . " - " . $distribution->awayTeam,
+                    "result"                => $distribution->result,
+                    "statusId"              => $distribution->statusId,
+                    "publishTime"           => $distribution->publishTime,
+                    "systemDate"            => $distribution->systemDate,
+                    "siteId"                => $distribution->siteId,
+                    "message"               => "Distribution already has publish time, leaving it as it is",
+                    "step"                  => 200
+                ]));
+            }
 
             // update in distribution
             $distribution->save();

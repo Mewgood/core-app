@@ -3,6 +3,8 @@
 use App\Distribution;
 use App\Site;
 use Ixudra\Curl\Facades\Curl;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 class DistributionPublish extends CronCommand
 {
@@ -19,6 +21,8 @@ class DistributionPublish extends CronCommand
     /** @var int $timestamp */
     protected $timestamp;
 
+    private $log = null;
+
     public function fire()
     {
         $this->timestamp = time();
@@ -32,9 +36,27 @@ class DistributionPublish extends CronCommand
 
         //$cron = $this->startCron();
 
+        $currentDate = date("Y-m-d", time());
+        $this->log = new Logger($currentDate . '_automatic_publish');
+        $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $currentDate . '_automatic_publish.log')), Logger::INFO);
+
+        $this->log->log(100, json_encode([
+            "today"             => $this->systemDate["today"],
+            "yesterday"         => $this->systemDate["yesterday"],
+            "message"           => "Trying to publish distributions",
+            "step"              => 1
+        ]));
+
         $events = $this->loadData();
 
         if (!$events) {
+            $this->log->log(100, json_encode([
+                "today"             => $this->systemDate["today"],
+                "yesterday"         => $this->systemDate["yesterday"],
+                "message"           => "No events",
+                "step"              => 6
+            ]));
+            $this->log->log(100, "####################################################");
             //$this->stopCron($cron, []);
             return true;
         }
@@ -50,101 +72,503 @@ class DistributionPublish extends CronCommand
                 continue;
             }
             foreach($values as $systemDate => $info) {
-                if ($info['allEventsPublished'])
+                if ($info['allEventsPublished']) {
+                    $this->log->log(100, json_encode([
+                        "systemDate"        => $systemDate,
+                        "site"              => $site->name,
+                        "message"           => "All events were published for this site and date, skipping date",
+                        "step"              => 7
+                    ]));
                     continue;
+                }
 
                 // process any events that have a publish time lower than actual time
                 // OR has already events published in the respective day
 
                 foreach($info['events'] as $event) {
-                    if (!$info['hasPublishedEvents'] && ($event->publishTime < $this->timestamp)) {
+                    if (!$info['hasPublishedEvents'] && ($event->publishTime == 0)) {
+                        $this->log->log(100, json_encode([
+                            "packageId"             => $event->packageId,
+                            "tableIdentifier"       => $event->tableIdentifier,
+                            "tipIdentifier"         => $event->tipIdentifier,
+                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                            "result"                => $event->result,
+                            "statusId"              => $event->statusId,
+                            "publishTime"           => $event->publishTime,
+                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                            "systemDate"            => $systemDate,
+                            "currentTime"           => $this->timestamp,
+                            "site"                  => $site->name,
+                            "message"               => "Publish time of the distribution is lower than current time",
+                            "step"                  => 8
+                        ]));
                         continue;
                     }
+
                     if (!$event->isPublish && $event->result && $event->status && $this->timestamp >= $event->publishTime) {
-                        if (!$this->publish($site, $event))
+                        if (!$this->publish($site, $event)) {
                             $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
+                            $this->log->log(100, json_encode([
+                                "packageId"             => $event->packageId,
+                                "tableIdentifier"       => $event->tableIdentifier,
+                                "tipIdentifier"         => $event->tipIdentifier,
+                                "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                "result"                => $event->result,
+                                "statusId"              => $event->statusId,
+                                "publishTime"           => $event->publishTime,
+                                "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                "systemDate"            => $systemDate,
+                                "currentTime"           => $this->timestamp,
+                                "site"                  => $site->name,
+                                "message"               => "Could not publish event",
+                                "step"                  => 9
+                            ]));
+                        }
                         else {
                             if (!isset($dataInfo['sent']))
                                 $dataInfo['sent'] = 0;
                             $dataInfo['sent']++;
+
+                            $this->log->log(100, json_encode([
+                                "packageId"             => $event->packageId,
+                                "tableIdentifier"       => $event->tableIdentifier,
+                                "tipIdentifier"         => $event->tipIdentifier,
+                                "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                "result"                => $event->result,
+                                "statusId"              => $event->statusId,
+                                "publishTime"           => $event->publishTime,
+                                "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                "systemDate"            => $systemDate,
+                                "currentTime"           => $this->timestamp,
+                                "site"                  => $site->name,
+                                "message"               => "Published event with current time",
+                                "step"                  => 10
+                            ]));
                         }
                     }
                 }
 
                 if (!$info['hasPublishedEvents']) {
-                    if ($info['hasPendingEvents'])
+                    $this->log->log(100, json_encode([
+                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                        "systemDate"            => $systemDate,
+                        "currentTime"           => $this->timestamp,
+                        "site"                  => $site->name,
+                        "message"               => "Site has not published events",
+                        "step"                  => 11
+                    ]));
+                    if ($info['hasPendingEvents']) {
+                        $this->log->log(100, json_encode([
+                            "hasPendingEvents"      => $info['hasPendingEvents'],
+                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                            "systemDate"            => $systemDate,
+                            "currentTime"           => $this->timestamp,
+                            "site"                  => $site->name,
+                            "message"               => "Site has pending events",
+                            "step"                  => 12
+                        ]));
                         continue;
+                    }
 
                     if ($systemDate === $this->systemDate['yesterday']) {
+                        $this->log->log(100, json_encode([
+                            "hasPendingEvents"      => $info['hasPendingEvents'],
+                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                            "systemDate"            => $systemDate,
+                            "currentTime"           => $this->timestamp,
+                            "site"                  => $site->name,
+                            "winRate"               => $info['winRate'],
+                            "message"               => "Processing yesterday events",
+                            "step"                  => 13
+                        ]));
                         // process events that weren't finished yesterday
 
                         if ($info['winRate'] >= 50) {
                             foreach($info['events'] as $event) {
-                                if ($event->isPublish)
+                                if ($event->isPublish) {
+                                    $this->log->log(100, json_encode([
+                                        "packageId"             => $event->packageId,
+                                        "tableIdentifier"       => $event->tableIdentifier,
+                                        "tipIdentifier"         => $event->tipIdentifier,
+                                        "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                        "result"                => $event->result,
+                                        "statusId"              => $event->statusId,
+                                        "isPublished"           => $event->isPublish,
+                                        "publishTime"           => $event->publishTime,
+                                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                        "systemDate"            => $systemDate,
+                                        "site"                  => $site->name,
+                                        "message"               => "Event was already published for yesterday case",
+                                        "step"                  => 14
+                                    ]));
                                     continue;
+                                }
 
-                                if (!$this->publish($site, $event))
+                                if (!$this->publish($site, $event)) {
                                     $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
-                                else
+                                    $this->log->log(100, json_encode([
+                                        "packageId"             => $event->packageId,
+                                        "tableIdentifier"       => $event->tableIdentifier,
+                                        "tipIdentifier"         => $event->tipIdentifier,
+                                        "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                        "result"                => $event->result,
+                                        "statusId"              => $event->statusId,
+                                        "isPublished"           => $event->isPublish,
+                                        "publishTime"           => $event->publishTime,
+                                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                        "systemDate"            => $systemDate,
+                                        "site"                  => $site->name,
+                                        "message"               => "Failed to publish event",
+                                        "step"                  => 15
+                                    ]));
+                                }
+                                else {
                                     $dataInfo['sent']++;
+                                    $this->log->log(100, json_encode([
+                                        "packageId"             => $event->packageId,
+                                        "tableIdentifier"       => $event->tableIdentifier,
+                                        "tipIdentifier"         => $event->tipIdentifier,
+                                        "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                        "result"                => $event->result,
+                                        "statusId"              => $event->statusId,
+                                        "isPublished"           => $event->isPublish,
+                                        "publishTime"           => $event->publishTime,
+                                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                        "systemDate"            => $systemDate,
+                                        "site"                  => $site->name,
+                                        "message"               => "Event published with current date",
+                                        "step"                  => 16
+                                    ]));
+                                }
                             }
                         } else {
                            if ($info['publishTime'] && $info['publishTime'] >= $this->timestamp) {
+                                $this->log->log(100, json_encode([
+                                    "sitePublishTime"       => $info['publishTime'],
+                                    "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                    "systemDate"            => $systemDate,
+                                    "site"                  => $site->name,
+                                    "message"               => "Trying to publish events with site publish time",
+                                    "step"                  => 17
+                                ]));
                                foreach($info['events'] as $event) {
-                                   if ($event->isPublish)
+                                   if ($event->isPublish) {
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Event was already published, skipping",
+                                            "step"                  => 18
+                                        ]));
                                        continue;
+                                   }
 
-                                   if (!$this->publish($site, $event))
+                                   if (!$this->publish($site, $event)) {
                                        $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
-                                   else
+                                       $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Failed to publish event",
+                                            "step"                  => 19
+                                        ]));
+                                   }
+                                   else {
                                        $dataInfo['sent']++;
+                                       $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Event was published with current date",
+                                            "step"                  => 20
+                                        ]));
+                                   }
                                }
                            } else {
-                               if (!$info['publishTime'])
-                                   $info['publishTime'] = strtotime('today 09:00:00') + mt_rand(0, 30 * 60);
+                               if (!$info['publishTime']) {
+                                   $info['publishTime'] = strtotime('today 07:00:00') + mt_rand(0, 30 * 60);
+
+                                   $this->log->log(100, json_encode([
+                                        "sitePublishTime"       => $info['publishTime'],
+                                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                        "systemDate"            => $systemDate,
+                                        "site"                  => $site->name,
+                                        "message"               => "Set site publish time, will try to publish events with this timestamp [today 09:00:00 + (0 <-> 30 min)]",
+                                        "step"                  => 21
+                                    ]));
+                               }
 
                                foreach ($info['events'] as $event) {
-                                   if ($event->isPublish)
-                                       continue;
-
-                                   if (!$event->publishTime) {
-                                       $event->publishTime = $info['publishTime'];
-                                       $event->save();
+                                    $this->log->log(100, json_encode([
+                                        "packageId"             => $event->packageId,
+                                        "tableIdentifier"       => $event->tableIdentifier,
+                                        "tipIdentifier"         => $event->tipIdentifier,
+                                        "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                        "result"                => $event->result,
+                                        "statusId"              => $event->statusId,
+                                        "isPublished"           => $event->isPublish,
+                                        "sitePublishTime"       => $info['publishTime'],
+                                        "eventPublishTime"      => $event->publishTime,
+                                        "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                        "systemDate"            => $systemDate,
+                                        "site"                  => $site->name,
+                                        "message"               => "Processing event",
+                                        "step"                  => 22
+                                    ]));
+                                    if ($event->isPublish) {
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Event was already published",
+                                            "step"                  => 23
+                                        ]));
+                                        continue;
                                    }
+
+                                    if (!$event->publishTime) {
+                                        $event->publishTime = $info['publishTime'];
+                                        $event->save();
+
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Updated event publishTime with site publishTime",
+                                            "step"                  => 24
+                                        ]));
+                                    }
                                }
                            }
                         }
                     } else {
+                        $this->log->log(100, json_encode([
+                            "hasPendingEvents"      => $info['hasPendingEvents'],
+                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                            "systemDate"            => $systemDate,
+                            "currentTime"           => $this->timestamp,
+                            "site"                  => $site->name,
+                            "winRate"               => $info['winRate'],
+                            "message"               => "Processing today events",
+                            "step"                  => 25
+                        ]));
                         // process events that for today
-                        if ($this->hour < getenv('PUBLISH_EVENTS_ON_WIN_START') || $info['hasPendingEvents'])
+                        if ($this->hour < getenv('PUBLISH_EVENTS_ON_WIN_START') || $info['hasPendingEvents']) {
+                            $this->log->log(100, json_encode([
+                                "hasPendingEvents"      => $info['hasPendingEvents'],
+                                "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                "systemDate"            => $systemDate,
+                                "currentTime"           => $this->timestamp,
+                                "site"                  => $site->name,
+                                "winRate"               => $info['winRate'],
+                                "currentHour"           => $this->hour,
+                                "publishTimeHour"       => getenv('PUBLISH_EVENTS_ON_WIN_START'),
+                                "message"               => "Current hour is lower than publish time hour OR we have pending events",
+                                "step"                  => 26
+                            ]));
                             continue;
+                        }
 
                         if (!$info['publishTime']) {
-                            if ($info['winRate'] >= 50) {
-                                foreach($info['events'] as $event) {
-                                    if ($event->isPublish)
-                                        continue;
+                            $this->log->log(100, json_encode([
+                                "hasPendingEvents"      => $info['hasPendingEvents'],
+                                "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                "systemDate"            => $systemDate,
+                                "currentTime"           => $this->timestamp,
+                                "site"                  => $site->name,
+                                "winRate"               => $info['winRate'],
+                                "currentHour"           => $this->hour,
+                                "publishTimeHour"       => getenv('PUBLISH_EVENTS_ON_WIN_START'),
+                                "message"               => "Publish Time is not SET",
+                                "step"                  => 300
+                            ]));
 
-                                    if (!$this->publish($site, $event))
+                            if ($info['winRate'] >= 50) {
+                                $info['publishTime'] = strtotime('today ' . getenv('PUBLISH_EVENTS_ON_WIN_START') . ':00:00') + mt_rand(0, 2 * 60 * 60);
+
+                                foreach($info['events'] as $event) {
+                                    if ($this->timestamp > $info['publishTime']) {
+                                        $event->publishTime = $info['publishTime'];
+                                        $event->update();
+                                        continue;
+                                    }
+
+                                    if ($event->isPublish) {
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Event was already published",
+                                            "step"                  => 27
+                                        ]));
+                                        continue;
+                                    }
+
+                                    if (!$this->publish($site, $event)) {
                                         $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
-                                    else
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Failed to publish event",
+                                            "step"                  => 28
+                                        ]));
+                                    }
+                                    else {
                                         $dataInfo['sent']++;
+
+                                        $this->log->log(100, json_encode([
+                                            "packageId"             => $event->packageId,
+                                            "tableIdentifier"       => $event->tableIdentifier,
+                                            "tipIdentifier"         => $event->tipIdentifier,
+                                            "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                            "result"                => $event->result,
+                                            "statusId"              => $event->statusId,
+                                            "isPublished"           => $event->isPublish,
+                                            "sitePublishTime"       => $info['publishTime'],
+                                            "eventPublishTime"      => $event->publishTime,
+                                            "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                            "systemDate"            => $systemDate,
+                                            "site"                  => $site->name,
+                                            "message"               => "Published event with current time",
+                                            "step"                  => 29
+                                        ]));
+                                    }
                                 }
-                                
-                                $info['publishTime'] = strtotime('today ' . getenv('PUBLISH_EVENTS_ON_WIN_START') . ':00:00') + mt_rand(0, 4 * 60 * 60);
+
+                                $this->log->log(100, json_encode([
+                                    "sitePublishTime"       => $info['publishTime'],
+                                    "hasPendingEvents"      => $info['hasPendingEvents'],
+                                    "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                    "systemDate"            => $systemDate,
+                                    "currentTime"           => $this->timestamp,
+                                    "site"                  => $site->name,
+                                    "winRate"               => $info['winRate'],
+                                    "message"               => "Set publish time for today events [today ]" . getenv('PUBLISH_EVENTS_ON_WIN_START') . ':00:00 + (0 <-> 2 hours)',
+                                    "step"                  => 30
+                                ]));
                             }
                             else {
-                                $info['publishTime'] = strtotime('tomorrow 09:00:00') + mt_rand(0, 30 * 60);
+                                $info['publishTime'] = strtotime('tomorrow 07:00:00') + mt_rand(0, 30 * 60);
+
+                                $this->log->log(100, json_encode([
+                                    "sitePublishTime"       => $info['publishTime'],
+                                    "hasPendingEvents"      => $info['hasPendingEvents'],
+                                    "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                    "systemDate"            => $systemDate,
+                                    "currentTime"           => $this->timestamp,
+                                    "site"                  => $site->name,
+                                    "winRate"               => $info['winRate'],
+                                    "message"               => "Set publish time for today events [tomorrow 07:00:00 + (0 <-> 30 minutes)]",
+                                    "step"                  => 31
+                                ]));
                             }
 
                         }
                         foreach ($info['events'] as $event) {
-                            if ($event->isPublish)
+                            if ($event->isPublish) {
+                                $this->log->log(100, json_encode([
+                                    "packageId"             => $event->packageId,
+                                    "tableIdentifier"       => $event->tableIdentifier,
+                                    "tipIdentifier"         => $event->tipIdentifier,
+                                    "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                    "result"                => $event->result,
+                                    "statusId"              => $event->statusId,
+                                    "isPublished"           => $event->isPublish,
+                                    "sitePublishTime"       => $info['publishTime'],
+                                    "eventPublishTime"      => $event->publishTime,
+                                    "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                    "systemDate"            => $systemDate,
+                                    "site"                  => $site->name,
+                                    "message"               => "Event was already published",
+                                    "step"                  => 32
+                                ]));
                                 continue;
+                            }
 
                             if (!$event->publishTime) {
                                 $event->publishTime = $info['publishTime'];
                                 $event->save();
+
+                                $this->log->log(100, json_encode([
+                                    "packageId"             => $event->packageId,
+                                    "tableIdentifier"       => $event->tableIdentifier,
+                                    "tipIdentifier"         => $event->tipIdentifier,
+                                    "match"                 => $event->homeTeam . " - " . $event->awayTeam,
+                                    "result"                => $event->result,
+                                    "statusId"              => $event->statusId,
+                                    "isPublished"           => $event->isPublish,
+                                    "sitePublishTime"       => $info['publishTime'],
+                                    "eventPublishTime"      => $event->publishTime,
+                                    "hasPublishedEvents"    => $info['hasPublishedEvents'],
+                                    "systemDate"            => $systemDate,
+                                    "site"                  => $site->name,
+                                    "message"               => "Updated event publishTime with site publishTime",
+                                    "step"                  => 33
+                                ]));
                             }
                         }
                     }
@@ -183,6 +607,20 @@ class DistributionPublish extends CronCommand
             if ($value->isPublish) {
                 $data[$value->siteId][$value->systemDate]['hasPublishedEvents'] = true;
                 $data[$value->siteId][$value->systemDate]['tmp']['published']++;
+
+                $this->log->log(100, json_encode([
+                    "systemDate"        => $value->systemDate,
+                    "siteId"            => $value->siteId,
+                    "packageId"         => $value->packageId,
+                    "tableIdentifier"   => $value->tableIdentifier,
+                    "tipIdentifier"     => $value->tipIdentifier,
+                    "match"             => $value->homeTeam . " - " . $value->awayTeam,
+                    "result"            => $value->result,
+                    "statusId"          => $value->statusId,
+                    "publishTime"       => $value->publishTime,
+                    "message"           => "Distribution was already published",
+                    "step"              => 2
+                ]));
             }
 
             if
@@ -191,27 +629,82 @@ class DistributionPublish extends CronCommand
                 (!$value->result || !$value->status)
             )
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
+                $this->log->log(100, json_encode([
+                    "systemDate"        => $value->systemDate,
+                    "siteId"            => $value->siteId,
+                    "packageId"         => $value->packageId,
+                    "tableIdentifier"   => $value->tableIdentifier,
+                    "tipIdentifier"     => $value->tipIdentifier,
+                    "match"             => $value->homeTeam . " - " . $value->awayTeam,
+                    "result"            => $value->result,
+                    "statusId"          => $value->statusId,
+                    "publishTime"       => $value->publishTime,
+                    "message"           => "Site has pending events",
+                    "step"              => 3
+                ]));
             if
             (
                 !$data[$value->siteId][$value->systemDate]['publishTime'] ||
                 $data[$value->siteId][$value->systemDate]['publishTime'] < $value->publishTime
-            )
+            ) {
                 $data[$value->siteId][$value->systemDate]['publishTime'] = $value->publishTime;
+                $this->log->log(100, json_encode([
+                    "systemDate"        => $value->systemDate,
+                    "siteId"            => $value->siteId,
+                    "packageId"         => $value->packageId,
+                    "tableIdentifier"   => $value->tableIdentifier,
+                    "tipIdentifier"     => $value->tipIdentifier,
+                    "match"             => $value->homeTeam . " - " . $value->awayTeam,
+                    "result"            => $value->result,
+                    "statusId"          => $value->statusId,
+                    "publishTime"       => $value->publishTime,
+                    "message"           => "Site does not have publishTime or distribution has a greater publishTime value",
+                    "step"              => 3
+                ]));
+            }
 
-            if ((int) $value->statusId === 1)
+            if ((int) $value->statusId === 1) {
                 $data[$value->siteId][$value->systemDate]['tmp']['good']++;
 
+                $this->log->log(100, json_encode([
+                    "systemDate"        => $value->systemDate,
+                    "siteId"            => $value->siteId,
+                    "packageId"         => $value->packageId,
+                    "tableIdentifier"   => $value->tableIdentifier,
+                    "tipIdentifier"     => $value->tipIdentifier,
+                    "match"             => $value->homeTeam . " - " . $value->awayTeam,
+                    "result"            => $value->result,
+                    "statusId"          => $value->statusId,
+                    "publishTime"       => $value->publishTime,
+                    "message"           => "Site has a WIN status event",
+                    "step"              => 4
+                ]));
+            }
+            $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
             $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
+
+        $this->log->log(100, "####################################################");
 
         foreach ($data as $siteId => $dates) {
             foreach ($dates as $date => $value) {
                 $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
                 $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
+
+                $this->log->log(100, json_encode([
+                    "systemDate"            => $date,
+                    "siteId"                => $siteId,
+                    "winRate"               => $data[$siteId][$date]['winRate'],
+                    "allEventsPublished"    => $data[$siteId][$date]['allEventsPublished'],
+                    "tmp"                   => $data[$siteId][$date]['tmp'],
+                    "message"               => "Site status information",
+                    "step"                  => 5
+                ]));
                 unset($data[$siteId][$date]['tmp']);
             }
         }
+        $this->log->log(100, "####################################################");
         return $data;
     }
 

@@ -180,12 +180,19 @@ class Subscription extends Controller
 
         // pause the autounit of the site that received a subscription
         if (!$package->paused_autounit && $package->manual_pause) {
-            $package->manual_pause = 0;
+            \App\Package::where('siteId', $siteId)
+                ->where("tipIdentifier", "=", $package->tipIdentifier)
+                ->update([
+                    "manual_pause" => 0
+                ]);
         }
         if (!$package->manual_pause) {
-            $package->paused_autounit = 1;
+            \App\Package::where('siteId', $siteId)
+                ->where("tipIdentifier", "=", $package->tipIdentifier)
+                ->update([
+                    "paused_autounit" => 1
+                ]);
         }
-        $package->save();
 
         return [
             'type' => 'success',

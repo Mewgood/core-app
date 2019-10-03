@@ -13,7 +13,7 @@ class DistributionKeepLastMonth extends CronCommand
     public function fire()
     {
         $count = Distribution::whereMonth(
-            'created_at', '<=', Carbon::now()->subMonth()->month
+            'created_at', '<', Carbon::now()->subMonth()->month
         )->delete();
 
         $this->info(json_encode([

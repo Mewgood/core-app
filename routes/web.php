@@ -606,7 +606,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->where('distribution.siteId', $siteId)
             ->where('distribution.systemDate', '>=', $date . '-01')
             ->where('distribution.systemDate', '<=', $date . '-31')
-            ->where('distribution.provider', "!=", "autounit")
+            //->where('distribution.provider', "!=", "autounit")
             ->where('distribution.tableIdentifier', $tableIdentifier)
             ->groupBy("distribution.associationId")
             ->get()
@@ -647,7 +647,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                 $vip++;
             }
         }
-
         usort($manuallyAddedEvents, function($a, $b) {
             return strtotime($b['systemDate']) - strtotime($a['systemDate']);
         });
@@ -694,19 +693,16 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             ->toArray();
 
         foreach ($scheduledEvents as $k => $v) {
-            $prediction = array_search($v["predictionId"], array_column($manuallyAddedEvents, 'predictionId'));
-            $homeTeamId = array_search($v["homeTeamId"], array_column($manuallyAddedEvents, 'homeTeamId'));
-            $awayTeamId = array_search($v["awayTeamId"], array_column($manuallyAddedEvents, 'awayTeamId'));
-            $odd = array_search($v["odd"], array_column($manuallyAddedEvents, 'odd'));
-            
-            if (
-                $prediction !== false &&
-                $homeTeamId !== false && 
-                $awayTeamId !== false && 
-                $odd !== false
-            ) {
-                //dd($manuallyAddedEvents[$prediction]);
-                unset($manuallyAddedEvents[$prediction]);
+            foreach ($manuallyAddedEvents as $index => $manuallyAddedEvent) {
+                if (
+                    $v["predictionId"] === $manuallyAddedEvent["predictionId"] &&
+                    $v["homeTeamId"] === $manuallyAddedEvent["homeTeamId"] &&
+                    $v["awayTeamId"] === $manuallyAddedEvent["awayTeamId"] &&
+                    $v["odd"] === $manuallyAddedEvent["odd"]
+                ) {
+                    unset($manuallyAddedEvents[$index]);
+                    break;
+                }
             }
             
             $scheduledEvents[$k]['scheduleId'] = $v["id"];
@@ -754,7 +750,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
         }
 
         $allEvents = array_merge($manuallyAddedEvents, $scheduledEvents);
-
         usort($allEvents, function($a, $b) {
             return strtotime($b['systemDate']) - strtotime($a['systemDate']);
         });
@@ -1259,6 +1254,8 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post('/event/create-manually', 'Admin\Event@createManual');
     $app->post('/event/create-manually-bulk', 'Admin\Event@createManualBulk');
+
+    $app->get('/event/{eventId}/postpone', 'Admin\Event@postpone');
 	
 	
     /*

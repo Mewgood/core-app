@@ -22,7 +22,8 @@ class Match extends Model {
         'awayTeamId',
         'result',
         'eventDate',
-        'estimated_finished_time'
+        'estimated_finished_time',
+        'is_postponed'
     ];
 
     public function getLeagueMatches(array $leagueIds, string $date, int $limit, $offset, $search = NULL)

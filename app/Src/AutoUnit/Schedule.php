@@ -52,8 +52,9 @@ Class Schedule
                         $p[$predictionGroup]--;
 
                         $statusId = $this->getRandomStatus($predictionGroup);
-                        if ($statusId === null)
+                        if ($statusId === null) {
                             continue;
+                        }
 
                         $this->schedule[] = [
                             'siteId'          => $this->settings->siteId,
@@ -171,8 +172,9 @@ Class Schedule
         if ($this->settings->{$identifier} < 1)
             return false;
 
-        if ($p[$type] >= round(($this->totalTips * $this->settings->{$identifier}) / 100))
+        if ($p[$type] > round(($this->totalTips * $this->settings->{$identifier}) / 100)) {
             return false;
+        }
 
         return true;
     }

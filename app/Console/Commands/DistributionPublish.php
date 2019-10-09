@@ -22,6 +22,7 @@ class DistributionPublish extends CronCommand
     protected $timestamp;
 
     private $log = null;
+    private $currentDate = null;
 
     public function fire()
     {
@@ -36,27 +37,11 @@ class DistributionPublish extends CronCommand
 
         //$cron = $this->startCron();
 
-        $currentDate = date("Y-m-d", time());
-        $this->log = new Logger($currentDate . '_automatic_publish');
-        $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $currentDate . '_automatic_publish.log')), Logger::INFO);
-
-        $this->log->log(100, json_encode([
-            "today"             => $this->systemDate["today"],
-            "yesterday"         => $this->systemDate["yesterday"],
-            "message"           => "Trying to publish distributions",
-            "step"              => 1
-        ]));
+        $this->currentDate = date("Y-m-d", time());
 
         $events = $this->loadData();
 
         if (!$events) {
-            $this->log->log(100, json_encode([
-                "today"             => $this->systemDate["today"],
-                "yesterday"         => $this->systemDate["yesterday"],
-                "message"           => "No events",
-                "step"              => 6
-            ]));
-            $this->log->log(100, "####################################################");
             //$this->stopCron($cron, []);
             return true;
         }
@@ -66,6 +51,9 @@ class DistributionPublish extends CronCommand
         ];
         foreach($events as $siteId => $values) {
             $site = Site::find($siteId);
+        
+            $this->log = new Logger($this->currentDate . '_automatic_publish');
+            $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $this->currentDate . '_site-'. $siteId . '_automatic_publish.log')), Logger::INFO);
 
             if (!$site) {
                 $dataInfo['errors'][] = "Couldn't find site with id $siteId";
@@ -86,6 +74,10 @@ class DistributionPublish extends CronCommand
                 // OR has already events published in the respective day
 
                 foreach($info['events'] as $event) {
+                    if (!$event->publishTime) {
+                        $event->publishTime = $info['publishTime'];
+                        $event->update();
+                    }
                     if (!$info['hasPublishedEvents'] && ($event->publishTime == 0)) {
                         $this->log->log(100, json_encode([
                             "packageId"             => $event->packageId,
@@ -313,14 +305,14 @@ class DistributionPublish extends CronCommand
                                }
                            } else {
                                if (!$info['publishTime']) {
-                                   $info['publishTime'] = strtotime('today 07:00:00') + mt_rand(0, 30 * 60);
+                                   $info['publishTime'] = strtotime('today 06:00:00') + mt_rand(0, 30 * 60);
 
                                    $this->log->log(100, json_encode([
                                         "sitePublishTime"       => $info['publishTime'],
                                         "hasPublishedEvents"    => $info['hasPublishedEvents'],
                                         "systemDate"            => $systemDate,
                                         "site"                  => $site->name,
-                                        "message"               => "Set site publish time, will try to publish events with this timestamp [today 09:00:00 + (0 <-> 30 min)]",
+                                        "message"               => "Set site publish time, will try to publish events with this timestamp [today 06:00:00 + (0 <-> 30 min)]",
                                         "step"                  => 21
                                     ]));
                                }
@@ -584,12 +576,15 @@ class DistributionPublish extends CronCommand
     {
         $data = [];
         $distributions = Distribution::whereIn('systemDate', array_values($this->systemDate))
-            ->where("to_distribute", "=", 1)
             ->get();
+
         foreach ($distributions as $value) {
-            if (!isset($data[$value->siteId]))
+            if (!isset($data[$value->siteId])) {
                 $data[$value->siteId] = [];
-            if (!isset($data[$value->siteId][$value->systemDate]))
+                $this->log = new Logger($this->currentDate . '_automatic_publish');
+                $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $this->currentDate . '_site-'. $value->siteId . '_automatic_publish.log')), Logger::INFO);
+            }
+            if (!isset($data[$value->siteId][$value->systemDate])) {
                 $data[$value->siteId][$value->systemDate] = [
                     'allEventsPublished' => false,
                     'hasPublishedEvents' => false,
@@ -603,6 +598,7 @@ class DistributionPublish extends CronCommand
                         'published' => 0
                     ]
                 ];
+            }
 
             if ($value->isPublish) {
                 $data[$value->siteId][$value->systemDate]['hasPublishedEvents'] = true;
@@ -685,9 +681,12 @@ class DistributionPublish extends CronCommand
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
 
-        $this->log->log(100, "####################################################");
+        
 
         foreach ($data as $siteId => $dates) {
+            $this->log = new Logger($this->currentDate . '_automatic_publish');
+            $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $this->currentDate . '_site-'. $siteId . '_automatic_publish.log')), Logger::INFO);
+
             foreach ($dates as $date => $value) {
                 $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
                 $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
@@ -704,7 +703,6 @@ class DistributionPublish extends CronCommand
                 unset($data[$siteId][$date]['tmp']);
             }
         }
-        $this->log->log(100, "####################################################");
         return $data;
     }
 

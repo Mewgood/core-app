@@ -622,7 +622,7 @@ class DistributionPublish extends CronCommand
             if
             (
                 !$data[$value->siteId][$value->systemDate]['hasPendingEvents'] &&
-                (!$value->result || !$value->status)
+                (!$value->result || !$value->statusId)
             )
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
                 $this->log->log(100, json_encode([

@@ -623,7 +623,7 @@ class DistributionPublish extends CronCommand
             (
                 !$data[$value->siteId][$value->systemDate]['hasPendingEvents'] &&
                 (!$value->result || !$value->statusId)
-            )
+            ) {
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
                 $this->log->log(100, json_encode([
                     "systemDate"        => $value->systemDate,
@@ -638,6 +638,8 @@ class DistributionPublish extends CronCommand
                     "message"           => "Site has pending events",
                     "step"              => 3
                 ]));
+            }
+
             if
             (
                 !$data[$value->siteId][$value->systemDate]['publishTime'] ||

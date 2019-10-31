@@ -89,7 +89,8 @@ class Kernel extends ConsoleKernel
             ->dailyAt("00:01");
 
         $schedule->command("distribution:keep-last-month")
-            ->dailyAt("00:01");
+            ->dailyAt("00:01")
+            ->appendOutputTo($filePath);
 
         $schedule->command("logs:remove-autounit")
             ->dailyAt("00:01");

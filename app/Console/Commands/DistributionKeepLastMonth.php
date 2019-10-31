@@ -12,9 +12,9 @@ class DistributionKeepLastMonth extends CronCommand
 
     public function fire()
     {
-        $count = Distribution::whereMonth(
-            'created_at', '<', Carbon::now()->subMonth()->month
-        )->delete();
+        $date = date('Y-m-d', strtotime('-60 day', time()) ); // now - 2 months
+        $count = Distribution::where('created_at', '<', $date)
+            ->delete();
 
         $this->info(json_encode([
             "deleted" => $count

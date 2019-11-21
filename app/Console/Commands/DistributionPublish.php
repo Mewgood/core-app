@@ -673,7 +673,7 @@ class DistributionPublish extends CronCommand
                 ]));
             }
 
-            if ((int) $value->statusId === 1) {
+            if ((int) $value->statusId === 1 || $value->statusId == 4) {
                 $data[$value->siteId][$value->systemDate]['tmp']['good']++;
 
                 $this->log->log(100, json_encode([

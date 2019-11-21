@@ -576,9 +576,20 @@ class DistributionPublish extends CronCommand
     {
         $data = [];
         $distributions = Distribution::whereIn('systemDate', array_values($this->systemDate))
+            ->orderBy("siteId", "DESC")
             ->get();
 
         foreach ($distributions as $value) {
+            $matchesCounter = Distribution::where('systemDate', $value->systemDate)
+                ->distinct('eventId')
+                ->where("siteId", $value->siteId)
+                ->count('eventId');
+
+            // skip postponed match if we have more than 1 match on a site
+            if ($matchesCounter > 1 && $value->statusId == 4) {
+                continue;
+            }
+
             if (!isset($data[$value->siteId])) {
                 $data[$value->siteId] = [];
                 $this->log = new Logger($this->currentDate . '_automatic_publish');
@@ -622,7 +633,8 @@ class DistributionPublish extends CronCommand
             if
             (
                 !$data[$value->siteId][$value->systemDate]['hasPendingEvents'] &&
-                (!$value->result || !$value->statusId)
+                (!$value->result || !$value->statusId) &&
+                $value->statusId != 4
             ) {
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
                 $this->log->log(100, json_encode([

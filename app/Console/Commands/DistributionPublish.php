@@ -585,11 +585,6 @@ class DistributionPublish extends CronCommand
                 ->where("siteId", $value->siteId)
                 ->count('eventId');
 
-            // skip postponed match if we have more than 1 match on a site
-            if ($matchesCounter > 1 && $value->statusId == 4) {
-                continue;
-            }
-
             if (!isset($data[$value->siteId])) {
                 $data[$value->siteId] = [];
                 $this->log = new Logger($this->currentDate . '_automatic_publish');
@@ -674,7 +669,9 @@ class DistributionPublish extends CronCommand
             }
 
             if ((int) $value->statusId === 1 || $value->statusId == 4) {
-                $data[$value->siteId][$value->systemDate]['tmp']['good']++;
+                if ($value->statusId != 4) {
+                    $data[$value->siteId][$value->systemDate]['tmp']['good']++;
+                }
 
                 $this->log->log(100, json_encode([
                     "systemDate"        => $value->systemDate,
@@ -690,8 +687,10 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
+            if ($value->statusId != 4) {
+                $data[$value->siteId][$value->systemDate]['tmp']['all']++;
+            }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
-            $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
 

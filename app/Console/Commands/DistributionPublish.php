@@ -669,7 +669,7 @@ class DistributionPublish extends CronCommand
             }
 
             if ((int) $value->statusId === 1 || $value->statusId == 4) {
-                if ($value->statusId != 4) {
+                if ($value->statusId != 4 || $matchesCounter == 1) {
                     $data[$value->siteId][$value->systemDate]['tmp']['good']++;
                 }
 
@@ -687,7 +687,7 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
-            if ($value->statusId != 4) {
+            if ($value->statusId != 4 || $matchesCounter == 1) {
                 $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];

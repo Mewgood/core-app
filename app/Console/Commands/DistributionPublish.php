@@ -687,7 +687,7 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
-            if ($value->statusId != 4 || $matchesCounter == 1) {
+            if ($value->statusId != 4 || $matchesCounter <= 1) {
                 $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
@@ -701,7 +701,7 @@ class DistributionPublish extends CronCommand
             $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $this->currentDate . '_site-'. $siteId . '_automatic_publish.log')), Logger::INFO);
 
             foreach ($dates as $date => $value) {
-                $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
+                $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / ($value['tmp']['all'] != 0 ? $value['tmp']['all'] : 1) ), 2);
                 $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
 
                 $this->log->log(100, json_encode([

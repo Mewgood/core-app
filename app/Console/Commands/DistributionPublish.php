@@ -580,10 +580,18 @@ class DistributionPublish extends CronCommand
             ->get();
 
         foreach ($distributions as $value) {
-            $matchesCounter = Distribution::where('systemDate', $value->systemDate)
+            $matches = Distribution::where('systemDate', $value->systemDate)
                 ->distinct('eventId')
                 ->where("siteId", $value->siteId)
-                ->count('eventId');
+                ->get();
+
+            $allMatchesPostponed = true;
+            foreach ($matches as $match) {
+                if ($match->statusId != 4) {
+                    $allMatchesPostponed = false;
+                    break;
+                }
+            }
 
             if (!isset($data[$value->siteId])) {
                 $data[$value->siteId] = [];
@@ -669,7 +677,7 @@ class DistributionPublish extends CronCommand
             }
 
             if ((int) $value->statusId === 1 || $value->statusId == 4) {
-                if ($value->statusId != 4 || $matchesCounter == 1) {
+                if ($value->statusId != 4 || $allMatchesPostponed) {
                     $data[$value->siteId][$value->systemDate]['tmp']['good']++;
                 }
 
@@ -687,21 +695,19 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
-            if ($value->statusId != 4 || $matchesCounter <= 1) {
+            if ($value->statusId != 4 || $allMatchesPostponed) {
                 $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
 
-        
-
         foreach ($data as $siteId => $dates) {
             $this->log = new Logger($this->currentDate . '_automatic_publish');
             $this->log->pushHandler(new StreamHandler(storage_path('logs/' . $this->currentDate . '_site-'. $siteId . '_automatic_publish.log')), Logger::INFO);
 
             foreach ($dates as $date => $value) {
-                $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / ($value['tmp']['all'] != 0 ? $value['tmp']['all'] : 1) ), 2);
+                $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
                 $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
 
                 $this->log->log(100, json_encode([

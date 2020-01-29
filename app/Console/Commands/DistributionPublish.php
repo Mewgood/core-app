@@ -609,6 +609,7 @@ class DistributionPublish extends CronCommand
                     'tmp' => [
                         'all' => 0,
                         'good' => 0,
+                        'totalWithPostponed' => count($matches),
                         'published' => 0
                     ]
                 ];
@@ -708,7 +709,7 @@ class DistributionPublish extends CronCommand
 
             foreach ($dates as $date => $value) {
                 $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
-                $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
+                $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['totalWithPostponed'] === $value['tmp']['published'];
 
                 $this->log->log(100, json_encode([
                     "systemDate"            => $date,

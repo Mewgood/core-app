@@ -97,7 +97,7 @@ class DistributionPublish extends CronCommand
                         continue;
                     }
 
-                    if (!$event->isPublish && $event->result && $event->status && $this->timestamp >= $event->publishTime) {
+                    if (!$event->isPublish && ($event->result || $event->statusId == 4) && $event->status && $this->timestamp >= $event->publishTime) {
                         if (!$this->publish($site, $event)) {
                             $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
                             $this->log->log(100, json_encode([

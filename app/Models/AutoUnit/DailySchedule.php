@@ -29,7 +29,7 @@ class DailySchedule extends Model {
         'is_from_admin_pool'
     ];
 
-    public static function getMonthlyStatistics(int $siteId)
+    public static function getMonthlyStatistics(int $siteId, string $table)
     {
         $data = ArchiveBig::select(
             DB::raw("
@@ -62,9 +62,10 @@ class DailySchedule extends Model {
             ),
             DB::raw('DATE_FORMAT(archive_big.systemDate, "%Y-%m") AS date')
         )
-        ->whereRaw("archive_big.systemDate >= DATE_ADD(CURDATE(), INTERVAL -5 MONTH)")
+        ->whereRaw("DATE_FORMAT(archive_big.systemDate, '%Y-%m') >= DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL -5 MONTH), '%Y-%m')")
         ->whereRaw('DATE_FORMAT(archive_big.systemDate, "%Y-%m") < DATE_FORMAT(CURDATE(), "%Y-%m")')
         ->where("archive_big.siteId" , "=", $siteId)
+        ->where("archive_big.tableIdentifier" , "=", $table)
         ->groupBy(DB::raw('DATE_FORMAT(archive_big.systemDate, "%Y-%m")'))
         ->get();
 

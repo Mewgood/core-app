@@ -97,7 +97,7 @@ class DistributionPublish extends CronCommand
                         continue;
                     }
 
-                    if (!$event->isPublish && $event->result && $event->status && $this->timestamp >= $event->publishTime) {
+                    if (!$event->isPublish && ($event->result || $event->statusId == 4) && $event->status && $this->timestamp >= $event->publishTime) {
                         if (!$this->publish($site, $event)) {
                             $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
                             $this->log->log(100, json_encode([
@@ -576,9 +576,23 @@ class DistributionPublish extends CronCommand
     {
         $data = [];
         $distributions = Distribution::whereIn('systemDate', array_values($this->systemDate))
+            ->orderBy("siteId", "DESC")
             ->get();
 
         foreach ($distributions as $value) {
+            $matches = Distribution::where('systemDate', $value->systemDate)
+                ->distinct('eventId')
+                ->where("siteId", $value->siteId)
+                ->get();
+
+            $allMatchesPostponed = true;
+            foreach ($matches as $match) {
+                if ($match->statusId != 4) {
+                    $allMatchesPostponed = false;
+                    break;
+                }
+            }
+
             if (!isset($data[$value->siteId])) {
                 $data[$value->siteId] = [];
                 $this->log = new Logger($this->currentDate . '_automatic_publish');
@@ -595,6 +609,7 @@ class DistributionPublish extends CronCommand
                     'tmp' => [
                         'all' => 0,
                         'good' => 0,
+                        'totalWithPostponed' => count($matches),
                         'published' => 0
                     ]
                 ];
@@ -622,7 +637,8 @@ class DistributionPublish extends CronCommand
             if
             (
                 !$data[$value->siteId][$value->systemDate]['hasPendingEvents'] &&
-                (!$value->result || !$value->statusId)
+                (!$value->result || !$value->statusId) &&
+                $value->statusId != 4
             ) {
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
                 $this->log->log(100, json_encode([
@@ -661,8 +677,10 @@ class DistributionPublish extends CronCommand
                 ]));
             }
 
-            if ((int) $value->statusId === 1) {
-                $data[$value->siteId][$value->systemDate]['tmp']['good']++;
+            if ((int) $value->statusId === 1 || $value->statusId == 4) {
+                if ($value->statusId != 4 || $allMatchesPostponed) {
+                    $data[$value->siteId][$value->systemDate]['tmp']['good']++;
+                }
 
                 $this->log->log(100, json_encode([
                     "systemDate"        => $value->systemDate,
@@ -678,12 +696,12 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
+            if ($value->statusId != 4 || $allMatchesPostponed) {
+                $data[$value->siteId][$value->systemDate]['tmp']['all']++;
+            }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
-            $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
-
-        
 
         foreach ($data as $siteId => $dates) {
             $this->log = new Logger($this->currentDate . '_automatic_publish');
@@ -691,7 +709,7 @@ class DistributionPublish extends CronCommand
 
             foreach ($dates as $date => $value) {
                 $data[$siteId][$date]['winRate'] = round(100 * ($value['tmp']['good'] / $value['tmp']['all']), 2);
-                $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['all'] === $value['tmp']['published'];
+                $data[$siteId][$date]['allEventsPublished'] =  $value['tmp']['totalWithPostponed'] === $value['tmp']['published'];
 
                 $this->log->log(100, json_encode([
                     "systemDate"            => $date,

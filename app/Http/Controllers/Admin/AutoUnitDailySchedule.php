@@ -20,7 +20,7 @@ class AutoUnitDailySchedule extends Controller
     
     public function getMonthlyStatistics(Request $request)
     {
-        $statistics = DailySchedule::getMonthlyStatistics($request->siteId);
+        $statistics = DailySchedule::getMonthlyStatistics($request->siteId, $request->table);
         return response($statistics, 200);
     }
     

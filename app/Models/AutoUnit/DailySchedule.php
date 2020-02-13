@@ -29,7 +29,7 @@ class DailySchedule extends Model {
         'is_from_admin_pool'
     ];
 
-    public static function getMonthlyStatistics(int $siteId, string $table)
+    public static function getMonthlyStatistics($siteId, $table)
     {
         $data = ArchiveBig::select(
             DB::raw("

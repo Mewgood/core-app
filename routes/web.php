@@ -397,7 +397,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                     )
                     ->where('siteId', $siteId)
                     ->where('tipIdentifier', $package->tipIdentifier)
-                    ->where('type', 'default')
                     ->whereRaw("auto_unit_league.leagueId = league.id")
                     ->limit(1);
 
@@ -426,8 +425,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                     )
                     ->where('siteId', $siteId)
                     ->where('tipIdentifier', $package->tipIdentifier)
-                    ->where('type', 'monthly')
-                    ->where('date', $date)
                     ->whereRaw("auto_unit_league.leagueId = league.id")
                     ->limit(1);
 
@@ -456,7 +453,6 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
                         )
                         ->where('siteId', $siteId)
                         ->where('tipIdentifier', $package->tipIdentifier)
-                        ->where('type', 'default')
                         ->whereRaw("auto_unit_league.leagueId = league.id")
                         ->limit(1);
   

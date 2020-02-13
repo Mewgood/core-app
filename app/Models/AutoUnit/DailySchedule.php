@@ -249,24 +249,23 @@ class DailySchedule extends Model {
             \App\Models\AutoUnit\DailySchedule::create($day);
         }
 
-        // save associated leagues
         \App\Models\AutoUnit\League::where('siteId', $data->siteId)
             ->where('tipIdentifier', $data->tipIdentifier)
-            ->where('type', 'monthly')
-            ->where('date', $data->date)
             ->delete();
+
+        $autounitLeagues = [];
 
         if (is_array($leagues) && count($leagues) > 0) {
             foreach ($leagues as $league) {
-                \App\Models\AutoUnit\League::create([
-                    'siteId' => $data->siteId,
-                    'leagueId' => is_a($data, "Illuminate\Http\Request") ? $league : $league["leagueId"],
-                    'tipIdentifier' => $data->tipIdentifier,
-                    'type' => 'monthly',
-                    'date' => $data->date,
-                ]);
+                $autounitLeagues[] = [
+                    "leagueId" => $league,
+                    "siteId" => $data->siteId,
+                    "tipIdentifier" => $data->tipIdentifier
+                ];
             }
         }
+
+        \App\Models\AutoUnit\League::insert($autounitLeagues);
         return [
             'type' => 'success',
             'message' => '*** Monthly configuration was updated with success.',

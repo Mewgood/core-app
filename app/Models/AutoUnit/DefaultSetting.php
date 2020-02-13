@@ -67,22 +67,23 @@ class DefaultSetting extends Model {
             $default->save();
         }
 
-        // save associated leagues
         \App\Models\AutoUnit\League::where('siteId', $data->siteId)
             ->where('tipIdentifier', $data->tipIdentifier)
-            ->where('type', 'default')
             ->delete();
+
+        $autounitLeagues = [];
 
         if (is_array($leagues) && count($leagues) > 0) {
             foreach ($leagues as $league) {
-                \App\Models\AutoUnit\League::create([
-                    'siteId' => $data->siteId,
-                    'tipIdentifier' => $data->tipIdentifier,
-                    'leagueId' => $league,
-                    'type' => 'default',
-                ]);
+                $autounitLeagues[] = [
+                    "leagueId" => $league,
+                    "siteId" => $data->siteId,
+                    "tipIdentifier" => $data->tipIdentifier
+                ];
             }
         }
+
+        \App\Models\AutoUnit\League::insert($autounitLeagues);
 
         return [
             'type' => 'success',

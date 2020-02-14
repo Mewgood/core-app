@@ -24,6 +24,7 @@ class AutounitGenerateMonthlyConfiguration extends CronCommand
             $siteWithDefaultConfiguration->win = round(($totalTips * ($winRate / 100)));
             $siteWithDefaultConfiguration->loss = round($totalTips * ((100 - $winRate) / 100));
             $siteWithDefaultConfiguration->date = gmdate("Y-m");
+            $siteWithDefaultConfiguration->winrate = $winRate;
             $siteWithDefaultConfiguration->leagues = json_encode(League::getDefaultConfigurationLeagues($siteWithDefaultConfiguration->siteId));
             $response = DailySchedule::saveMonthlyConfiguration($siteWithDefaultConfiguration);
             var_dump($response);

@@ -16,7 +16,6 @@ class League extends Model {
     {
         $data = League::select("auto_unit_league.leagueId")
             ->where("auto_unit_league.siteId", "=", $siteId)
-            ->where("type", "=", "default")
             ->get()
             ->toArray();
         return $data;

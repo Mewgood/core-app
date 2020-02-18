@@ -673,7 +673,6 @@ class AutoUnitAddEvents extends CronCommand
     private function getAssociatedLeaguesBySchedule($siteId, $date, $tipIdentifier) : array
     {
         return \App\Models\AutoUnit\League::select('leagueId')
-            ->where('date', $date)
             ->where('tipIdentifier', $tipIdentifier)
             ->where('siteId', $siteId)
             ->get()

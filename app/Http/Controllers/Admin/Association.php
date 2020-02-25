@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\AssociationModel;
+use App\Prediction;
 use Illuminate\Http\Request;
-use App\Models\AutoUnit\MonthlySetting;
+use App\Models\AssociationModel;
+use App\Http\Controllers\Controller;
 use App\Models\AutoUnit\DailySchedule;
+use App\Models\AutoUnit\MonthlySetting;
 
 class Association extends Controller
 {
@@ -463,5 +464,75 @@ class Association extends Controller
             'eventIsAssociated' => $distributionExists,
             'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
         ];
+    }
+
+    public function displayAssociationDetail($id)
+    {
+        $association = AssociationModel::findOrFail($id);
+        $predictions = Prediction::get();
+
+        return response([
+            "association" => $association,
+            "predictions" => $predictions
+        ]);
+    }
+
+    public function updatePrediction(Request $request)
+    {
+        $association = AssociationModel::findOrFail($request->associationId);
+        $association->odd = $request->odd;
+        $association->predictionId = $request->predictionId;
+        $association->update();
+
+        $distributions = \App\Distribution::where("associationId", "=", $association->id)->get();
+        $response = [];
+        $response["association"] = $association;
+
+        foreach ($distributions as $distribution) {
+            if (!$distribution->isPublish) {
+                $response["notPublished"][$distribution->siteId] = $distribution->updateDistribution($association);
+            } else {
+                $response["published"][$distribution->siteId] = $distribution->updateDistribution($association);
+            }
+        }
+        return response($response);
+    }
+
+    public function updatePublishedPredictions(Request $request)
+    {
+        $response = [];
+        if ($request->has("associationId") && $request->has("siteIds")) {
+            $association = AssociationModel::findOrFail($request->associationId);
+    
+            foreach ($request->siteIds as $key => $value) {
+                $distributions = \App\Distribution::where("associationId", "=", $association->id)
+                    ->where("siteId", "=", $value)
+                    ->get();
+    
+                foreach ($distributions as $distribution) {
+                    switch ($request->actions[$key]) {
+                        case "update":
+                            $response["sites"][$distribution->siteId] = $distribution->updatePublishedDistribution($association);
+                        break;
+    
+                        case "change":
+                            if ($distribution->provider == "autounit") {
+                                $response["sites"][$distribution->siteId] = $distribution->changePublishedAutounit($association);
+                            } else {
+                                $response["sites"][$distribution->siteId] = $distribution->removePublishedDistribution();
+                            }
+                        break;
+    
+                        default:
+                            $response["sites"][$distribution->siteId] = [
+                                "site" => $distribution->site,
+                                "status" => "Kept",
+                                "type" => $distribution->provider
+                            ];
+                    }
+                }
+            }
+        }
+        return response($response);
     }
 }

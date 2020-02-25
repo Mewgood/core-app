@@ -35,4 +35,14 @@ class Package extends Model {
     ];
 
 //    protected $hidden = [ ‘password’ ];
+
+    public function packagePredictions()
+    {
+        return $this->hasMany('App\PackagePrediction', 'packageId');
+    }
+
+    public function prediction()
+    {
+        return $this->hasOne('App\Prediction', 'predictionIdentifier', 'identifier');
+    }
 }

@@ -29,6 +29,11 @@ class DailySchedule extends Model {
         'is_from_admin_pool'
     ];
 
+    public function odd()
+    {
+        return $this->hasOne('App\Models\Events\Odd', 'id', 'odd_id');
+    }
+
     public static function getMonthlyStatistics($siteId, $table)
     {
         $data = ArchiveBig::select(

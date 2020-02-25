@@ -31,5 +31,10 @@ class Event extends Model {
         return $this->hasOne('App\AppResultStatus', 'id', 'statusId');
     }
 
+    public function match()
+    {
+        return $this->hasOne('App\Match', 'id', 'matchId');
+    }
+
 //    protected $hidden = [ ‘password’ ];
 }

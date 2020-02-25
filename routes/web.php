@@ -1327,7 +1327,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string $systemDate
     // @return array()
     $app->post("/association/no-tip", 'Admin\Association@addNoTip');
-
+    $app->post("/association/update-prediction", "Admin\Association@updatePrediction");
+    $app->post("/association/update-published-prediction", "Admin\Association@updatePublishedPredictions");
+    $app->get("/association/detail/{id}", "Admin\Association@displayAssociationDetail");
 
     // create new associations
     // @param array() $eventsIds

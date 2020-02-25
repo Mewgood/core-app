@@ -142,12 +142,18 @@ class Distribution extends Model {
                 ]); 
             }
 
-            $this->delete();
-            $data = [
-                "site" => $this->site,
-                "status" => "Removed",
-                "type" => ucfirst($this->provider)
-            ];
+            
+            if ($this->provider != "autounit") {
+                $this->delete();
+
+                $data = [
+                    "site" => $this->site,
+                    "status" => "Removed",
+                    "type" => ucfirst($this->provider)
+                ];
+            } else {
+
+            }
         }
         return $data;
     }
@@ -286,7 +292,6 @@ class Distribution extends Model {
                 ]); 
             }
 
-            // Yeah, goodluck
             $autounit = new AutoUnitAddEvents();
             $autounit->fire($this->event->match, true, $autounitDailySchedule->id, false, true);
             $data = [
@@ -316,6 +321,36 @@ class Distribution extends Model {
         $data = [
             "site" => $this->site,
             "status" => "Removed",
+            "type" => ucfirst($this->provider)
+        ];
+        return $data;
+    }
+
+    public function changePublishedAutounit()
+    {
+        $autounitDailySchedule = DailySchedule::where("siteId", "=", $this->siteId)
+            ->where("tableIdentifier", "=", $this->tableIdentifier)
+            ->where("tipIdentifier", "=", $this->tipIdentifier)
+            ->where("match_id", "=", $this->event->match->primaryId)
+            ->where("systemDate", "=", $this->systemDate)
+            ->first();
+
+        if ($this->archiveHome) {
+            $this->archiveHome()->update([
+                "isVisible" => 0
+            ]);
+        }
+        if ($this->archiveBig) {
+            $this->archiveBig()->update([
+                "isVisible" => 0
+            ]); 
+        }
+
+        $autounit = new AutoUnitAddEvents();
+        $autounit->fire($this->event->match, true, $autounitDailySchedule->id, false, true);
+        $data = [
+            "site" => $this->site,
+            "status" => "Changed",
             "type" => ucfirst($this->provider)
         ];
         return $data;

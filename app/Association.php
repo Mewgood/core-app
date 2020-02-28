@@ -35,6 +35,5 @@ class Association extends Model {
     {
         return $this->hasOne('App\AppResultStatus', 'id', 'statusId');
     }
-
 //    protected $hidden = [ ‘password’ ];
 }

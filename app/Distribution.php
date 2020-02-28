@@ -162,13 +162,24 @@ class Distribution extends Model {
     {
         $this->odd = $association->odd;
         $this->predictionId = $association->predictionId;
-        $this->predictionName = $this->prediction->name;
+        $this->predictionName = $association->prediction->name;
         $this->update();
 
-        foreach ($this->events as $event) {
-            $event->odd = $association->odd;
-            $event->predictionId = $association->predictionId;
-            $event->update();
+        $this->event->odd = $association->odd;
+        $this->event->predictionId = $association->predictionId;
+        $this->event->update();
+
+        $statusByScore = new \App\Src\Prediction\SetStatusByScore($this->event->result, $this->event->predictionId);
+        $statusByScore->evaluateStatus();
+        $statusId = $statusByScore->getStatus();
+        
+        if ($statusId > 0) {
+            $eventInstance = new \App\Http\Controllers\Admin\Event();
+            $eventInstance->updateResultAndStatus($this->event->id, $this->event->result, $statusId);
+            $this->statusId = $statusId;
+            $this->update();
+            $association->statusId = $statusId;
+            $association->update();
         }
 
         $data = [
@@ -183,14 +194,32 @@ class Distribution extends Model {
     {
         $this->odd = $association->odd;
         $this->predictionId = $association->predictionId;
-        $this->predictionName = $this->prediction->name;
+        $this->predictionName = $association->prediction->name;
         $this->update();
+
+        $this->event->odd = $association->odd;
+        $this->event->predictionId = $association->predictionId;
+        $this->event->update();
+
+        $statusByScore = new \App\Src\Prediction\SetStatusByScore($this->event->result, $this->event->predictionId);
+        $statusByScore->evaluateStatus();
+        $statusId = $statusByScore->getStatus();
+        
+        if ($statusId > 0) {
+            $eventInstance = new \App\Http\Controllers\Admin\Event();
+            $eventInstance->updateResultAndStatus($this->event->id, $this->event->result, $statusId);
+            $this->statusId = $statusId;
+            $this->update();
+            $association->statusId = $statusId;
+            $association->update();
+        }
 
         if ($this->archiveHome) {
             $this->archiveHome()->update([
                 "odd" => $this->odd,
                 "predictionId" => $this->predictionId,
-                "predictionName" => $this->predictionName
+                "predictionName" => $this->predictionName,
+                "statusId" => $statusId
             ]);
         }
 
@@ -198,14 +227,9 @@ class Distribution extends Model {
             $this->archiveBig()->update([
                 "odd" => $this->odd,
                 "predictionId" => $this->predictionId,
-                "predictionName" => $this->predictionName
+                "predictionName" => $this->predictionName,
+                "statusId" => $statusId
             ]); 
-        }
-
-        foreach ($this->events as $event) {
-            $event->odd = $association->odd;
-            $event->predictionId = $association->predictionId;
-            $event->update();
         }
 
         $data = [

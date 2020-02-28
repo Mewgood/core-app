@@ -482,6 +482,11 @@ class Association extends Controller
         $association = AssociationModel::findOrFail($request->associationId);
         $association->odd = $request->odd;
         $association->predictionId = $request->predictionId;
+
+        $statusByScore = new \App\Src\Prediction\SetStatusByScore($association->result, $association->predictionId);
+        $statusByScore->evaluateStatus();
+        $statusId = $statusByScore->getStatus();
+        $association->statusId = $statusId;
         $association->update();
 
         $distributions = \App\Distribution::where("associationId", "=", $association->id)->get();
@@ -500,7 +505,9 @@ class Association extends Controller
 
     public function updatePublishedPredictions(Request $request)
     {
+        $previousAssociation = null;
         $response = [];
+
         if ($request->has("associationId") && $request->has("siteIds")) {
             $association = AssociationModel::findOrFail($request->associationId);
     
@@ -524,6 +531,81 @@ class Association extends Controller
                         break;
     
                         default:
+                            if (!$previousAssociation) {
+                                $statusByScore = new \App\Src\Prediction\SetStatusByScore($distribution->result, $distribution->predictionId);
+                                $statusByScore->evaluateStatus();
+                                $statusId = $statusByScore->getStatus();
+
+                                $this->statusId = $statusId;
+                                $this->update();
+
+                                $event = \App\Event::where("source", "=", $distribution->source)
+                                    ->where("provider", "=", $distribution->provider)
+                                    ->where("countryCode" , "=", $distribution->countryCode)
+                                    ->where("leagueId"    , "=", $distribution->leagueId)
+                                    ->where("awayTeamId"  , "=", $distribution->awayTeamId)
+                                    ->where("odd"         , "=", $distribution->odd)
+                                    ->where("predictionId", "=", $distribution->predictionId)
+                                    ->where("result"      , "=", $distribution->result)
+                                    ->where("statusId"    , "=", $distribution->statusId)
+                                    ->first();
+
+                                if (!$event) {
+                                    $previousEvent = \App\Event::find($distribution->eventId);
+                                    $event = \App\Event::create([
+                                        "matchId" => $previousEvent->matchId,
+                                        "source" => $distribution->source,
+                                        "provider" => $distribution->provider,
+                                        "type" => $association->type,
+                                        "isNoTip" => $distribution->isNoTip,
+                                        "isVip" => $distribution->isVip,
+                                        "country" => $distribution->country,
+                                        "countryCode" => $distribution->countryCode,
+                                        "league" => $distribution->league,
+                                        "leagueId" => $distribution->leagueId,
+                                        "homeTeam" => $distribution->homeTeam,
+                                        "homeTeamId" => $distribution->homeTeamId,
+                                        "awayTeam" => $distribution->awayTeam,
+                                        "awayTeamId" => $distribution->awayTeamId,
+                                        "odd" => $distribution->odd,
+                                        "predictionId" => $distribution->predictionId,
+                                        "result" => $distribution->result,
+                                        "statusId" => $statusId,
+                                        "eventDate" => $distribution->eventDate,
+                                        "systemDate" => $distribution->systemDate,
+                                        "to_distribute" => $distribution->to_distribute
+                                    ]);
+                                }
+
+                                $previousAssociation = AssociationModel::create([
+                                    "eventId" => $event->id,
+                                    "source" => $distribution->source,
+                                    "provider" => $distribution->provider,
+                                    "type" => $association->type,
+                                    "isNoTip" => $distribution->isNoTip,
+                                    "isVip" => $distribution->isVip,
+                                    "country" => $distribution->country,
+                                    "countryCode" => $distribution->countryCode,
+                                    "league" => $distribution->league,
+                                    "leagueId" => $distribution->leagueId,
+                                    "homeTeam" => $distribution->homeTeam,
+                                    "homeTeamId" => $distribution->homeTeamId,
+                                    "awayTeam" => $distribution->awayTeam,
+                                    "awayTeamId" => $distribution->awayTeamId,
+                                    "odd" => $distribution->odd,
+                                    "predictionId" => $distribution->predictionId,
+                                    "result" => $distribution->result,
+                                    "statusId" => $statusId,
+                                    "eventDate" => $distribution->eventDate,
+                                    "systemDate" => $distribution->systemDate,
+                                    "to_distribute" => $distribution->to_distribute
+                                ]);
+                            }
+
+                            $distribution->associationId = $previousAssociation->id;
+                            $distribution->statusId = $statusId;
+                            $distribution->update();
+
                             $response["sites"][$distribution->siteId] = [
                                 "site" => $distribution->site,
                                 "status" => "Kept",

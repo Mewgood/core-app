@@ -258,15 +258,21 @@ class DailySchedule extends Model {
 
         if (is_array($leagues) && count($leagues) > 0) {
             foreach ($leagues as $league) {
-                $autounitLeagues[] = [
-                    "leagueId" => $league,
-                    "siteId" => $data->siteId,
-                    "tipIdentifier" => $data->tipIdentifier
-                ];
+                \App\Models\AutoUnit\League::updateOrInsert(
+                    [
+                        "leagueId" => $league,
+                        "siteId" => $data->siteId,
+                        "tipIdentifier" => $data->tipIdentifier
+                    ],
+                    [
+                        "leagueId" => $league,
+                        "siteId" => $data->siteId,
+                        "tipIdentifier" => $data->tipIdentifier
+                    ]
+                );
             }
         }
 
-        \App\Models\AutoUnit\League::insert($autounitLeagues);
         return [
             'type' => 'success',
             'message' => '*** Monthly configuration was updated with success.',

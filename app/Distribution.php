@@ -240,19 +240,19 @@ class Distribution extends Model {
 
         if ($this->archiveHome) {
             $this->archiveHome()->update([
-                "odd" => $this->odd,
-                "predictionId" => $this->predictionId,
-                "predictionName" => $this->predictionName,
-                "statusId" => $statusId
+                "odd" => $association->odd,
+                "predictionId" => $association->predictionId,
+                "predictionName" => $association->prediction->name,
+                "statusId" => $association->statusId
             ]);
         }
 
         if ($this->archiveBig) {
             $this->archiveBig()->update([
-                "odd" => $this->odd,
-                "predictionId" => $this->predictionId,
-                "predictionName" => $this->predictionName,
-                "statusId" => $statusId
+                "odd" => $association->odd,
+                "predictionId" => $association->predictionId,
+                "predictionName" => $association->prediction->name,
+                "statusId" => $association->statusId
             ]); 
         }
 

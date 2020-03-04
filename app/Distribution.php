@@ -283,12 +283,12 @@ class Distribution extends Model {
 
         if ($autounitDailySchedule) {
             if (
-                strtolower($autounitDailySchedule->predictionGroup) == strtolower($this->prediction->group) &&
-                strtolower($autounitDailySchedule->odd->predictionId) == strtolower($this->predictionId) &&
+                strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
+                strtolower($autounitDailySchedule->odd->predictionId) == strtolower($association->predictionId) &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {
-                $data = $this->updateSimplePublishedCase($association);
+                $data = $this->updateSimpleCase($association);
                 $autounitDailySchedule->odd->odd = $association->odd;
                 $autounitDailySchedule->odd->update();
             } else {

@@ -303,6 +303,8 @@ class Distribution extends Model {
                     "type" => ucfirst($this->provider)
                 ];
             }
+        } else {
+            $data = $this->updateSimpleCase($association);
         }
         return $data;
     }
@@ -324,37 +326,41 @@ class Distribution extends Model {
             ->whereRaw("date = DATE_FORMAT('" . $this->systemDate . "', '%Y-%m')")
             ->first();
 
-        if (
-            strtolower($autounitDailySchedule->predictionGroup) == strtolower($this->prediction->group) &&
-            strtolower($autounitDailySchedule->odd->predictionId) == strtolower($this->predictionId) &&
-            $autounitConfiguration->minOdd <= $association->odd &&
-            $autounitConfiguration->maxOdd >= $association->odd
-        ) {
-            $data = $this->updateSimplePublishedCase($association);
-            $autounitDailySchedule->odd->odd = $association->odd;
-            $autounitDailySchedule->odd->update();
-        } else {
-            if ($this->archiveHome) {
-                $this->archiveHome()->update([
-                    "isVisible" => 0
-                ]);
-            }
-            if ($this->archiveBig) {
-                $this->archiveBig()->update([
-                    "isVisible" => 0
-                ]); 
-            }
+        if ($autounitDailySchedule) {
+            if (
+                strtolower($autounitDailySchedule->predictionGroup) == strtolower($this->prediction->group) &&
+                strtolower($autounitDailySchedule->odd->predictionId) == strtolower($this->predictionId) &&
+                $autounitConfiguration->minOdd <= $association->odd &&
+                $autounitConfiguration->maxOdd >= $association->odd
+            ) {
+                $data = $this->updateSimplePublishedCase($association);
+                $autounitDailySchedule->odd->odd = $association->odd;
+                $autounitDailySchedule->odd->update();
+            } else {
+                if ($this->archiveHome) {
+                    $this->archiveHome()->update([
+                        "isVisible" => 0
+                    ]);
+                }
+                if ($this->archiveBig) {
+                    $this->archiveBig()->update([
+                        "isVisible" => 0
+                    ]); 
+                }
 
-            self::where("siteId", "=", $this->siteId)
-                ->where("associationId", "=", $this->associationId)
-                ->delete();
-            $autounit = new AutoUnitAddEvents();
-            $autounit->fire($this->event->match, true, $autounitDailySchedule->id, false, true);
-            $data = [
-                "site" => $this->site,
-                "status" => "Changed",
-                "type" => ucfirst($this->provider)
-            ];
+                self::where("siteId", "=", $this->siteId)
+                    ->where("associationId", "=", $this->associationId)
+                    ->delete();
+                $autounit = new AutoUnitAddEvents();
+                $autounit->fire($this->event->match, true, $autounitDailySchedule->id, false, true);
+                $data = [
+                    "site" => $this->site,
+                    "status" => "Changed",
+                    "type" => ucfirst($this->provider)
+                ];
+            }
+        } else {
+            $data = $this->updateSimplePublishedCase($association);
         }
         return $data;
     }

@@ -1,5 +1,6 @@
 <?php namespace App;
 
+use App\Models\Odd;
 use App\Models\AutoUnit\DailySchedule;
 use App\Models\AutoUnit\MonthlySetting;
 use Illuminate\Database\Eloquent\Model;
@@ -117,14 +118,19 @@ class Distribution extends Model {
             }
         } else {
             if (!$this->isPublish) {
-                self::where("siteId", "=", $this->siteId)
-                    ->where("associationId", "=", $this->associationId)
-                    ->delete();
-                $data = [
-                    "site" => $this->site,
-                    "status" => "Removed",
-                    "type" => ucfirst($this->provider)
-                ];
+                if ($this->provider == "autounit") {
+                    $data = $this->updateAutounitCase($association);
+                } else {
+                    self::where("siteId", "=", $this->siteId)
+                        ->where("associationId", "=", $this->associationId)
+                        ->delete();
+
+                    $data = [
+                        "site" => $this->site,
+                        "status" => "Removed",
+                        "type" => ucfirst($this->provider)
+                    ];
+                }
             } else {
                 $data = [
                     "site" => $this->site,
@@ -284,13 +290,33 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
-                strtolower($autounitDailySchedule->odd->predictionId) == strtolower($association->predictionId) &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {
                 $data = $this->updateSimpleCase($association);
-                $autounitDailySchedule->odd->odd = $association->odd;
-                $autounitDailySchedule->odd->update();
+                if (strtolower($autounitDailySchedule->odd->predictionId) == strtolower($association->predictionId)) {
+                    $autounitDailySchedule->odd->odd = $association->odd;
+                    $autounitDailySchedule->odd->update();
+                } else {
+                    $newOdd = Odd::where("predictionId", "=", $association->predictionId)
+                        ->where("matchId", "=", $this->event->match->id)
+                        ->where("leagueId", "=", $this->event->match->leagueId)
+                        ->first();
+
+                    if ($newOdd) {
+                        $newOdd->odd = $association->odd;
+                        $newOdd->update();
+                    } else {
+                        $newOdd = Odd::create([
+                            "matchId" => $this->event->match->id,
+                            "leagueId" => $this->event->match->leagueId,
+                            "predictionId" => $association->predictionId,
+                            "odd" => $association->odd
+                        ]);
+                    }
+                    $autounitDailySchedule->odd_id = $newOdd->id;
+                    $autounitDailySchedule->update();
+                }
             } else {
                 self::where("siteId", "=", $this->siteId)
                     ->where("associationId", "=", $this->associationId)
@@ -329,13 +355,34 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
-                strtolower($autounitDailySchedule->odd->predictionId) == strtolower($association->predictionId) &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {
                 $data = $this->updateSimplePublishedCase($association);
-                $autounitDailySchedule->odd->odd = $association->odd;
-                $autounitDailySchedule->odd->update();
+
+                if (strtolower($autounitDailySchedule->odd->predictionId) == strtolower($association->predictionId)) {
+                    $autounitDailySchedule->odd->odd = $association->odd;
+                    $autounitDailySchedule->odd->update();
+                } else {
+                    $newOdd = Odd::where("predictionId", "=", $association->predictionId)
+                        ->where("matchId", "=", $this->event->match->id)
+                        ->where("leagueId", "=", $this->event->match->leagueId)
+                        ->first();
+
+                    if ($newOdd) {
+                        $newOdd->odd = $association->odd;
+                        $newOdd->update();
+                    } else {
+                        $newOdd = Odd::create([
+                            "matchId" => $this->event->match->id,
+                            "leagueId" => $this->event->match->leagueId,
+                            "predictionId" => $association->predictionId,
+                            "odd" => $association->odd
+                        ]);
+                    }
+                    $autounitDailySchedule->odd_id = $newOdd->id;
+                    $autounitDailySchedule->update();
+                }
             } else {
                 if ($this->archiveHome) {
                     $this->archiveHome()->update([

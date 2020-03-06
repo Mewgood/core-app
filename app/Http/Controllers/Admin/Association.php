@@ -486,6 +486,7 @@ class Association extends Controller
             ->where("awayTeamId", "=", $association->awayTeamId)
             ->where("leagueId", "=", $association->leagueId)
             ->where("id", "!=", $association->id)
+            ->where("type", "=", $association->type)
             ->exists();
 
         if ($existingAssociation) {

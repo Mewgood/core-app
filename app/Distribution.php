@@ -194,17 +194,16 @@ class Distribution extends Model {
 
     private function updateSimpleCase($association)
     {
-        $this->event->odd = $association->odd;
-        $this->event->predictionId = $association->predictionId;
-        $this->event->update();
-
-        $statusByScore = new \App\Src\Prediction\SetStatusByScore($this->event->result, $this->event->predictionId);
+        $statusByScore = new \App\Src\Prediction\SetStatusByScore($association->result, $association->predictionId);
         $statusByScore->evaluateStatus();
         $statusId = $statusByScore->getStatus();
+
+        $this->event->odd = $association->odd;
+        $this->event->predictionId = $association->predictionId;
+        $this->event->statusId = $association->statusId;
+        $this->event->update();
         
         if ($statusId > 0) {
-            $eventInstance = new \App\Http\Controllers\Admin\Event();
-            $eventInstance->updateResultAndStatus($this->event->id, $this->event->result, $statusId);
             self::where("siteId", "=", $this->siteId)
                 ->where("associationId", "=", $this->associationId)
                 ->update([
@@ -226,23 +225,14 @@ class Distribution extends Model {
     {
         $this->event->odd = $association->odd;
         $this->event->predictionId = $association->predictionId;
+        $this->event->statusId = $association->statusId;
         $this->event->update();
 
-        $statusByScore = new \App\Src\Prediction\SetStatusByScore($this->event->result, $this->event->predictionId);
-        $statusByScore->evaluateStatus();
-        $statusId = $statusByScore->getStatus();
-        
-        if ($statusId > 0) {
-            $eventInstance = new \App\Http\Controllers\Admin\Event();
-            $eventInstance->updateResultAndStatus($this->event->id, $this->event->result, $statusId);
-            self::where("siteId", "=", $this->siteId)
-                ->where("associationId", "=", $this->associationId)
-                ->update([
-                    "statusId" => $statusId
-                ]);
-            $association->statusId = $statusId;
-            $association->update();
-        }
+        self::where("siteId", "=", $this->siteId)
+            ->where("associationId", "=", $this->associationId)
+            ->update([
+                "statusId" => $association->statusId
+            ]);
 
         if ($this->archiveHome) {
             $this->archiveHome()->update([
@@ -290,6 +280,7 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
+                $autounitDailySchedule->statusId == $association->statusId &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {
@@ -355,6 +346,7 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
+                $autounitDailySchedule->statusId == $association->statusId &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {

@@ -280,7 +280,7 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
-                $autounitDailySchedule->statusId == $association->statusId &&
+                ($autounitDailySchedule->statusId == $association->statusId || $association->statusId == -1) &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {
@@ -346,7 +346,7 @@ class Distribution extends Model {
         if ($autounitDailySchedule) {
             if (
                 strtolower($autounitDailySchedule->predictionGroup) == strtolower($association->prediction->group) &&
-                $autounitDailySchedule->statusId == $association->statusId &&
+                ($autounitDailySchedule->statusId == $association->statusId || $association->statusId == -1) &&
                 $autounitConfiguration->minOdd <= $association->odd &&
                 $autounitConfiguration->maxOdd >= $association->odd
             ) {

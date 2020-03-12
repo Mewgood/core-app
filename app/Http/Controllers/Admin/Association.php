@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Odd;
 use App\Prediction;
 use Illuminate\Http\Request;
 use App\Models\AssociationModel;
@@ -47,7 +48,14 @@ class Association extends Controller
                 $unique[$e->siteId][$e->tipIdentifier] = true;
                 $count++;
             }
+
+            $odd = Odd::where("matchId", "=", $association->event->matchId)
+                ->where("leagueId", "=", $association->leagueId)
+                ->where("predictionId", "=", $association->predictionId)
+                ->first();
+
             $association->distributedNumber = $count;
+            $association->initial_odd = $odd ? $odd->initial_odd : null;
         }
 
         return $associations;

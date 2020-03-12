@@ -1,5 +1,7 @@
 <?php namespace App;
 
+use App\Association;
+use App\Distribution;
 use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model {
@@ -34,6 +36,16 @@ class Event extends Model {
     public function match()
     {
         return $this->hasOne('App\Match', 'id', 'matchId');
+    }
+
+    public function distributions()
+    {
+        return $this->hasMany(Distribution::class, "eventId");
+    }
+
+    public function associations()
+    {
+        return $this->hasMany(Association::class, "eventId");
     }
 
 //    protected $hidden = [ ‘password’ ];

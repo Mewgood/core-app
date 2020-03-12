@@ -1,9 +1,10 @@
 <?php namespace App;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
-
+use App\Event;
 use App\Models\Odd;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
 
 class Match extends Model {
 
@@ -25,6 +26,16 @@ class Match extends Model {
         'estimated_finished_time',
         'is_postponed'
     ];
+
+    public function odds()
+    {
+        return $this->hasMany(Odd::class, "matchId");
+    }
+
+    public function events()
+    {
+        return $this->hasMany(Event::class, "matchId");
+    }
 
     public function getLeagueMatches(array $leagueIds, string $date, int $limit, $offset, $search = NULL)
     {
@@ -51,7 +62,8 @@ class Match extends Model {
     public static function getMatchPredictionOdd($predictionIdentifier, $matchId)
     {
         $odd = Odd::select(
-                    "odd"
+                    "odd",
+                    "initial_odd"
                 )
                 ->where("predictionId", "=", $predictionIdentifier)
                 ->where("matchId", "=", $matchId)

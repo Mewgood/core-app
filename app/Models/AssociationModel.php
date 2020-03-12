@@ -1,6 +1,7 @@
 <?php 
 namespace App\Models;
 
+use App\Event;
 use Illuminate\Database\Eloquent\Model;
 
 class AssociationModel extends Model 
@@ -11,6 +12,11 @@ class AssociationModel extends Model
     public function prediction()
     {
         return $this->belongsTo('App\Prediction', 'predictionId', 'identifier');
+    }
+
+    public function event()
+    {
+        return $this->hasOne(Event::class, "eventId");
     }
 
     public static function validate($item, $systemDate) {

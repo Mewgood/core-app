@@ -2,22 +2,23 @@
 
 namespace App\Console;
 
-use App\Console\Commands\DistributionPublish;
-use App\Console\Commands\DistributionEmailSchedule;
+use App\Console\Commands\SendMail;
+use App\Console\Commands\UpdateOdd;
+use App\Console\Commands\ResetAutounit;
 use App\Console\Commands\ImportNewEvents;
-use App\Console\Commands\SetResultAndStatus;
 use App\Console\Commands\PublishArchives;
 use App\Console\Commands\AutoUnitAddEvents;
-use App\Console\Commands\SendMail;
-use App\Console\Commands\ProcessSubscriptions;
-use App\Console\Commands\ResetAutounit;
-use App\Console\Commands\AutounitGenerateMonthlyConfiguration;
-use App\Console\Commands\RemoveUnusedDistributions;
-use App\Console\Commands\DistributionKeepLastMonth;
-use App\Console\Commands\RemoveAutounitLogs;
-
 use Illuminate\Console\Scheduling\Schedule;
+use App\Console\Commands\RemoveAutounitLogs;
+use App\Console\Commands\SetResultAndStatus;
+use App\Console\Commands\DistributionPublish;
+use App\Console\Commands\ProcessSubscriptions;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
+use App\Console\Commands\DistributionEmailSchedule;
+
+use App\Console\Commands\DistributionKeepLastMonth;
+use App\Console\Commands\RemoveUnusedDistributions;
+use App\Console\Commands\AutounitGenerateMonthlyConfiguration;
 
 class Kernel extends ConsoleKernel
 {
@@ -39,7 +40,8 @@ class Kernel extends ConsoleKernel
         AutounitGenerateMonthlyConfiguration::class,
         RemoveUnusedDistributions::class,
         DistributionKeepLastMonth::class,
-        RemoveAutounitLogs::class
+        RemoveAutounitLogs::class,
+        UpdateOdd::class
     ];
 
     /**
@@ -117,5 +119,8 @@ class Kernel extends ConsoleKernel
 
         $schedule->command("autounit:add-events")
             ->dailyAt("12:00");
+
+        $schedule->command("odds:update")
+            ->everyThirtyMinutes();
     }
 }

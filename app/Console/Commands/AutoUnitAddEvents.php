@@ -25,7 +25,7 @@ class AutoUnitAddEvents extends CronCommand
 
     private $SiteAssocEvents = [];
 
-    public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null, $postponed = false)
+    public function fire($matchWithResult = null, $changeMatch = false, $scheduleId = null, $postponed = false, $predictionChange = false)
     {
         $currentDate = date("Y-m-d", time());
         $this->log = new Logger($currentDate . '_autounit_logs');
@@ -34,7 +34,7 @@ class AutoUnitAddEvents extends CronCommand
         if ($matchWithResult !== null || $postponed) {
             $matchPredictionResults = json_decode($matchWithResult->prediction_results);
             $this->systemDate = gmdate('Y-m-d', strtotime($matchWithResult->eventDate));
-            $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId, $scheduleId);
+            $schedules = $this->getAutoUnitFilteredSchedule($this->systemDate, $matchWithResult->primaryId, $scheduleId, $predictionChange);
         } else {
             $this->systemDate = gmdate('Y-m-d');
             $schedules = $this->getAutoUnitTodaySchedule($scheduleId);
@@ -241,7 +241,7 @@ class AutoUnitAddEvents extends CronCommand
                 $this->fire($matchWithResult, true, $schedule["id"]);
                 continue;
             }
-            
+
             if ($changeMatch) {
                 // delete the events for the invalid match
                 // if none of the autounit schedules have it
@@ -724,14 +724,16 @@ class AutoUnitAddEvents extends CronCommand
             ->toArray();
     }
     
-    private function getAutoUnitFilteredSchedule($date, $matchId, $scheduleId) : array
+    private function getAutoUnitFilteredSchedule($date, $matchId, $scheduleId, $predictionChange) : array
     {
         return \App\Models\AutoUnit\DailySchedule::where('systemDate', $date)
             ->select(
                 "auto_unit_daily_schedule.*"
             )
             ->join("site", "site.id", "=", "auto_unit_daily_schedule.siteId")
-            ->where('status', '=', 'waiting')
+            ->when(!$predictionChange, function($query) {
+                $query->where('status', '=', 'waiting');
+            })
             ->where('match_id', '=', $matchId)
             ->when($scheduleId, function($query, $scheduleId) {
                 $query->where("auto_unit_daily_schedule.id", $scheduleId);

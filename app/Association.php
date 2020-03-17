@@ -36,5 +36,9 @@ class Association extends Model {
         return $this->hasOne('App\AppResultStatus', 'id', 'statusId');
     }
 
+    public function event()
+    {
+        return $this->belongsTo(Event::class, "eventId");
+    }
 //    protected $hidden = [ ‘password’ ];
 }

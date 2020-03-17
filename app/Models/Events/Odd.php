@@ -11,6 +11,7 @@ class Odd extends Model {
         'leagueId',
         'predictionId',
         'odd',
+        'initial_odd'
     ];
 
 //    protected $hidden = [ ‘password’ ];

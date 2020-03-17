@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\AssociationModel;
+use App\Models\Odd;
+use App\Prediction;
 use Illuminate\Http\Request;
-use App\Models\AutoUnit\MonthlySetting;
+use App\Models\AssociationModel;
+use App\Http\Controllers\Controller;
 use App\Models\AutoUnit\DailySchedule;
+use App\Models\AutoUnit\MonthlySetting;
 
 class Association extends Controller
 {
@@ -46,7 +48,14 @@ class Association extends Controller
                 $unique[$e->siteId][$e->tipIdentifier] = true;
                 $count++;
             }
+
+            $odd = Odd::where("matchId", "=", $association->event->matchId)
+                ->where("leagueId", "=", $association->leagueId)
+                ->where("predictionId", "=", $association->predictionId)
+                ->first();
+
             $association->distributedNumber = $count;
+            $association->initial_odd = $odd ? $odd->initial_odd : null;
         }
 
         return $associations;
@@ -463,5 +472,198 @@ class Association extends Controller
             'eventIsAssociated' => $distributionExists,
             'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
         ];
+    }
+
+    public function displayAssociationDetail($id)
+    {
+        $association = AssociationModel::findOrFail($id);
+        $predictions = Prediction::get();
+
+        return response([
+            "association" => $association,
+            "predictions" => $predictions
+        ]);
+    }
+
+    public function updatePrediction(Request $request)
+    {
+        $association = AssociationModel::findOrFail($request->associationId);
+        $existingAssociation = AssociationModel::where("predictionId", "=", $request->predictionId)
+            ->where("systemDate", "=", $association->systemDate)
+            ->where("homeTeamId", "=", $association->homeTeamId)
+            ->where("awayTeamId", "=", $association->awayTeamId)
+            ->where("leagueId", "=", $association->leagueId)
+            ->where("id", "!=", $association->id)
+            ->where("type", "=", $association->type)
+            ->exists();
+
+        if ($existingAssociation) {
+            return response([
+                "error" => [
+                    "message" => "Prediction already exists!"
+                ]
+            ]);
+        }
+
+        $association->odd = $request->odd;
+        $association->predictionId = $request->predictionId;
+
+        $statusByScore = new \App\Src\Prediction\SetStatusByScore($association->result, $association->predictionId);
+        $statusByScore->evaluateStatus();
+        $statusId = $statusByScore->getStatus();
+        $association->statusId = $statusId;
+        $association->update();
+
+        $distributions = \App\Distribution::where("associationId", "=", $association->id)->groupBy("associationId", "siteId")->get();
+        $response = [];
+        $response["association"] = $association;
+
+        foreach ($distributions as $distribution) {
+            if (!$distribution->isPublish) {
+                $temp = $distribution->updateDistribution($association);
+                if ($temp) {
+                    $response["notPublished"][$distribution->siteId] = $temp;
+                }
+            } else {
+                $temp = $distribution->updateDistribution($association);
+                if ($temp) {
+                    $response["published"][$distribution->siteId] = $temp;
+                }
+            }
+        }
+        return response($response);
+    }
+
+    public function updatePublishedPredictions(Request $request)
+    {
+        $previousAssociation = null;
+        $response = [];
+
+        if ($request->has("associationId") && $request->has("siteIds")) {
+            $association = AssociationModel::findOrFail($request->associationId);
+
+            foreach ($request->siteIds as $key => $value) {
+                $groupedDistributions = \App\Distribution::where("associationId", "=", $association->id)
+                    ->where("siteId", "=", $value)
+                    ->groupBy("associationId", "siteId")
+                    ->get();
+
+                foreach ($groupedDistributions as $distribution) {
+                    if ($request->actions[$key] == "keep") {
+                        $distributions = \App\Distribution::where("associationId", "=", $association->id)
+                            ->where("siteId", "=", $value)
+                            ->get();
+
+                        foreach ($distributions as $tempDistribution) {
+                            if (!$previousAssociation) {
+                                $statusByScore = new \App\Src\Prediction\SetStatusByScore($tempDistribution->result, $tempDistribution->predictionId);
+                                $statusByScore->evaluateStatus();
+                                $statusId = $statusByScore->getStatus();
+
+                                $this->statusId = $statusId;
+                                $this->update();
+
+                                $event = \App\Event::where("countryCode" , "=", $tempDistribution->countryCode)
+                                    ->where("leagueId"    , "=", $tempDistribution->leagueId)
+                                    ->where("awayTeamId"  , "=", $tempDistribution->awayTeamId)
+                                    ->where("odd"         , "=", $tempDistribution->odd)
+                                    ->where("predictionId", "=", $tempDistribution->predictionId)
+                                    ->where("result"      , "=", $tempDistribution->result)
+                                    ->where("statusId"    , "=", $tempDistribution->statusId)
+                                    ->where("eventDate"   , "=", $tempDistribution->eventDate)
+                                    ->first();
+            
+                                if (!$event) {
+                                    $previousEvent = \App\Event::find($tempDistribution->eventId);
+                                    $event = \App\Event::create([
+                                        "matchId" => $previousEvent->matchId,
+                                        "source" => $tempDistribution->source,
+                                        "provider" => $tempDistribution->provider,
+                                        "type" => $association->type,
+                                        "isNoTip" => $tempDistribution->isNoTip,
+                                        "isVip" => $tempDistribution->isVip,
+                                        "country" => $tempDistribution->country,
+                                        "countryCode" => $tempDistribution->countryCode,
+                                        "league" => $tempDistribution->league,
+                                        "leagueId" => $tempDistribution->leagueId,
+                                        "homeTeam" => $tempDistribution->homeTeam,
+                                        "homeTeamId" => $tempDistribution->homeTeamId,
+                                        "awayTeam" => $tempDistribution->awayTeam,
+                                        "awayTeamId" => $tempDistribution->awayTeamId,
+                                        "odd" => $tempDistribution->odd,
+                                        "predictionId" => $tempDistribution->predictionId,
+                                        "result" => $tempDistribution->result,
+                                        "statusId" => $statusId,
+                                        "eventDate" => $tempDistribution->eventDate,
+                                        "systemDate" => $tempDistribution->systemDate,
+                                        "to_distribute" => $tempDistribution->to_distribute
+                                    ]);
+                                }
+    
+                                $previousAssociation = AssociationModel::create([
+                                    "eventId" => $event->id,
+                                    "source" => $tempDistribution->source,
+                                    "provider" => $tempDistribution->provider,
+                                    "type" => $association->type,
+                                    "isNoTip" => $tempDistribution->isNoTip,
+                                    "isVip" => $tempDistribution->isVip,
+                                    "country" => $tempDistribution->country,
+                                    "countryCode" => $tempDistribution->countryCode,
+                                    "league" => $tempDistribution->league,
+                                    "leagueId" => $tempDistribution->leagueId,
+                                    "homeTeam" => $tempDistribution->homeTeam,
+                                    "homeTeamId" => $tempDistribution->homeTeamId,
+                                    "awayTeam" => $tempDistribution->awayTeam,
+                                    "awayTeamId" => $tempDistribution->awayTeamId,
+                                    "odd" => $tempDistribution->odd,
+                                    "predictionId" => $tempDistribution->predictionId,
+                                    "result" => $tempDistribution->result,
+                                    "statusId" => $statusId,
+                                    "eventDate" => $tempDistribution->eventDate,
+                                    "systemDate" => $tempDistribution->systemDate,
+                                    "to_distribute" => $tempDistribution->to_distribute
+                                ]);
+                            }
+
+                            $tempDistribution->associationId = $previousAssociation->id;
+                            $tempDistribution->statusId = $statusId;
+                            $tempDistribution->update();
+
+                            $response["sites"][$tempDistribution->siteId] = [
+                                "site" => $tempDistribution->site,
+                                "status" => "Kept",
+                                "type" => $tempDistribution->provider
+                            ];
+                        }
+                    }
+
+                    switch ($request->actions[$key]) {
+                        case "update":
+                            $temp = $distribution->updatePublishedDistribution($association);
+                            if ($temp) {
+                                $response["sites"][$distribution->siteId] = $temp;
+                            }
+                        break;
+    
+                        case "change":
+                            if ($distribution->provider == "autounit") {
+                                $temp = $distribution->changePublishedAutounit($association);
+                                if ($temp) {
+                                    $response["sites"][$distribution->siteId] = $temp;
+                                }
+                            } else {
+                                $temp = $distribution->removePublishedDistribution();
+                                if ($temp) {
+                                    $response["sites"][$distribution->siteId] = $temp;
+                                }
+                            }
+                        break;
+    
+                        default:
+                    }
+                }
+            }
+        }
+        return response($response);
     }
 }

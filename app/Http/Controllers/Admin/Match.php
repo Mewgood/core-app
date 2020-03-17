@@ -72,8 +72,9 @@ class Match extends Controller
                 unset($events[$k]);
 
             // unset events with no result and status
-            if (! $v->result)
+            if (! $v->result) {
                 unset($events[$k]);
+            }
         }
         return $events;
     }

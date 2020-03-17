@@ -612,6 +612,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $manuallyAddedEvents[$k]['isRealUser'] = false;
             $manuallyAddedEvents[$k]['isNoUser']   = true;
             $manuallyAddedEvents[$k]['isAutoUnit'] = false;
+            $manuallyAddedEvents[$k]['initial_odd'] = null;
 
             // check if event was for real users
             if (\App\SubscriptionTipHistory::where('eventId', $v['eventId'])->where('siteId', $v['siteId'])->count()) {
@@ -711,6 +712,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
             $scheduledEvents[$k]['awayTeam'] = $v["awayTeam"] ? $v["awayTeam"] : "?";
             $scheduledEvents[$k]['league']   = $v["league"] ? $v["league"] : "?";
             $scheduledEvents[$k]['odd']      = $v["odd"] ? $v["odd"] : "?";
+            $scheduledEvents[$k]['initial_odd']      = $v["initial_odd"] ? $v["initial_odd"] : "?";
             $scheduledEvents[$k]['predictionGroup'] = $v["predictionId"] ? $v["predictionId"] : $v["predictionGroup"];
             $scheduledEvents[$k]['result']      = $v["result"] ? $v["result"] : "?";
 
@@ -1327,7 +1329,9 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @param string $systemDate
     // @return array()
     $app->post("/association/no-tip", 'Admin\Association@addNoTip');
-
+    $app->post("/association/update-prediction", "Admin\Association@updatePrediction");
+    $app->post("/association/update-published-prediction", "Admin\Association@updatePublishedPredictions");
+    $app->get("/association/detail/{id}", "Admin\Association@displayAssociationDetail");
 
     // create new associations
     // @param array() $eventsIds

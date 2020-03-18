@@ -69,10 +69,15 @@ class Match extends Controller
 				
             // unset events finished less than 105 minutes
             if ($v->eventDate > Carbon::now('UTC')->modify('-105 minutes'))
-                unset($events[$k]);
+                //unset($events[$k]);
+
+            $postPoned = false;
+            if ($v->events) {
+                $postPoned = $v->events()->where("statusId", "=", 4)->exists();
+            }
 
             // unset events with no result and status
-            if (! $v->result) {
+            if (! $v->result && !$postPoned) {
                 unset($events[$k]);
             }
         }

@@ -80,6 +80,12 @@ class Event extends Controller
 
         foreach ($events as $event) {
             $match = Match::find($event["matchId"]);
+
+            $postPoned = false;
+            if ($match->events) {
+                $postPoned = $match->events()->where("statusId", "=", 4)->exists();
+            }
+
             $match = $match->toArray();
 
             $match['predictionId'] = $event["predictionId"];
@@ -88,11 +94,13 @@ class Event extends Controller
             $match['provider'] = 'event';
             $match['matchId'] = $match['id'];
 
-            if ($match['result'] != '') {
+            if ($match['result'] != '' && !$postPoned) {
                 $statusByScore = new \App\Src\Prediction\SetStatusByScore($match['result'], $match['predictionId']);
                 $statusByScore->evaluateStatus();
                 $statusId = $statusByScore->getStatus();
                 $match['statusId'] = $statusId;
+            } else if ($postPoned) {
+                $match['statusId'] = 4;
             }
 
             unset($match['id']);

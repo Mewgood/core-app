@@ -244,8 +244,8 @@ class EventModel extends Model
             $match->is_postponed = 1;
             $match->update();
     
-            $autoUnitCron = new AutoUnitAddEvents();
-            $autoUnitCron->fire($match, true, null, true);  
+            //$autoUnitCron = new AutoUnitAddEvents();
+            //$autoUnitCron->fire($match, true, null, true);  
         }
 
         return [

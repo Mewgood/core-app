@@ -51,20 +51,23 @@ class UpdateOdd extends CronCommand
                                             "odd" => $odd->odd
                                         ]);
                                     foreach ($match->events as $event) {
-                                        if ($event->distributions) {
-                                            $event->distributions()
-                                                ->where("predictionId", "=", $predictionId)
-                                                ->update([
-                                                    "odd" => $odd->odd
-                                                ]);
-                                        }
-    
-                                        if ($event->associations) {
-                                            $event->associations()
-                                                ->where("predictionId", "=", $predictionId)
-                                                ->update([
-                                                    "odd" => $odd->odd
-                                                ]);
+                                        $sentEmail = $event->distributions()->where("isEmailSend", "=", 1)->exists();
+                                        if (!$sentEmail) {
+                                            if ($event->distributions) {
+                                                $event->distributions()
+                                                    ->where("predictionId", "=", $predictionId)
+                                                    ->update([
+                                                        "odd" => $odd->odd
+                                                    ]);
+                                            }
+        
+                                            if ($event->associations) {
+                                                $event->associations()
+                                                    ->where("predictionId", "=", $predictionId)
+                                                    ->update([
+                                                        "odd" => $odd->odd
+                                                    ]);
+                                            }
                                         }
                                     }
                                 }

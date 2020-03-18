@@ -41,7 +41,7 @@ class UpdateOdd extends CronCommand
                         foreach ($match->odds as $odd) {
                             if ($odd->predictionId == $predictionId) {
                                 // TO DO: check for AU interval and replace match if is not good for it
-                                $odd->odd = $feedOdd["value"];
+                                $odd->odd = $this->roundOdds($feedOdd["value"]);
                                 $odd->update();
 
                                 if ($match->events) {
@@ -116,5 +116,24 @@ class UpdateOdd extends CronCommand
            return false;
         }
         return $predictionId;
+    }
+
+    private function roundOdds($odd) {
+        $stringOdd = (string)$odd;
+        $firstDecimal = (int)substr($stringOdd, 2, strlen($stringOdd) - 1);
+        $lastDecimal = (int)substr($stringOdd, 3, strlen($stringOdd));
+        
+        if ($lastDecimal == 0) {
+            return (float)$stringOdd;
+        } elseif ($lastDecimal < 3) {
+            $lastDecimal = 0;
+        } elseif ($lastDecimal >= 3 && $lastDecimal < 8) {
+            $lastDecimal = 5;
+        } elseif ($lastDecimal >= 8) {
+            $firstDecimal = 1 + (int)$firstDecimal;
+            $lastDecimal = $firstDecimal . "0";
+        }
+        $stringOdd = substr_replace($stringOdd, $lastDecimal, strlen($stringOdd) - strlen($lastDecimal), strlen($stringOdd));
+        return (float)$stringOdd;
     }
 }

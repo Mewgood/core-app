@@ -574,4 +574,14 @@ class Event extends Controller
     {
         return EventModel::postpone($eventId);
     }
+
+    public function getNoUserEvents(Request $request)
+    {
+        $data = EventModel::getNoUserEventsWithResults($request->date);
+        return response([
+            "events" => $data,
+            "table" => $request->table,
+            "systemDate" => $request->date
+        ],  200);
+    }
 }

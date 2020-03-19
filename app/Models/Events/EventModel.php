@@ -11,6 +11,8 @@ use App\Console\Commands\AutoUnitAddEvents;
 
 class EventModel extends Model
 {
+    protected $table = "event";
+
     public static function bulkInsert($data)
     {
         $addedEvents = [];
@@ -252,5 +254,13 @@ class EventModel extends Model
             'type' => 'success',
             'message' => 'Match was postponed'
         ];
+    }
+
+    public static function getNoUserEventsWithResults($date)
+    {
+        $data = self::where("eventDate", "LIKE", "%" .  $date . "%")
+            ->where("result", "!=", "")
+            ->get();
+        return $data;
     }
 }

@@ -1229,6 +1229,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
     // return events based on selection: table, provider, league, minOdd, maxOdd
     $app->get('/event/available', 'Admin\Event@getAvailableEvents');
+    $app->post('/event/no-user', 'Admin\Event@getNoUserEvents');
 
     // add event from match
     // @param integer $matchId

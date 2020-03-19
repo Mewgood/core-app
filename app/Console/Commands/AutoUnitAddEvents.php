@@ -882,14 +882,18 @@ class AutoUnitAddEvents extends CronCommand
     
     private function deleteEmptyAutounitAssociations()
     {
-        $associations = \App\Association::select("association.id")
+        $associations = \App\Association::select("association.id", "association.eventId")
             ->where("association.systemDate", "=", $this->systemDate)
             ->where("association.provider", "=", "autounit")
             ->leftJoin("distribution", "distribution.associationId", "association.id")
             ->whereNull("distribution.id")
             ->get()
             ->toArray();
-        \App\Association::whereIn('id', $associations)
+
+        if (!empty($associations)) {
+            \App\Event::where("id", "=", $associations[0]["eventId"])->delete();
+        }
+        \App\Association::whereIn('id', array_column($associations, "id"))
             ->delete();
     }
 }

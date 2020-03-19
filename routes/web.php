@@ -1330,6 +1330,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post("/association/no-tip", 'Admin\Association@addNoTip');
     $app->post("/association/update-prediction", "Admin\Association@updatePrediction");
+    $app->post("/association/update-prediction-odd", "Admin\Association@updatePredictionRUOdd");
     $app->post("/association/update-published-prediction", "Admin\Association@updatePublishedPredictions");
     $app->get("/association/detail/{id}", "Admin\Association@displayAssociationDetail");
 

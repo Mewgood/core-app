@@ -263,9 +263,10 @@ class EventModel extends Model
         if ($match) {
             $match->is_postponed = 1;
             $match->update();
-    
-            //$autoUnitCron = new AutoUnitAddEvents();
-            //$autoUnitCron->fire($match, true, null, true);  
+            $match->statusId = 4;
+
+            $autoUnitCron = new AutoUnitAddEvents();
+            $autoUnitCron->fire($match, false, null, false);  
         }
 
         return [

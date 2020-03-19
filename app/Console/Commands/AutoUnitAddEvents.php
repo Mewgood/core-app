@@ -141,14 +141,16 @@ class AutoUnitAddEvents extends CronCommand
             // verify if the match that got result from the feed
             // has the same statusId as the match in the auto-unit schedule
             if ($matchWithResult !== null && $changeMatch == false) {
-                foreach ($this->predictions as $prediction) {
-                    $found = array_search($prediction, array_column($matchPredictionResults, 'predictionName'));
-                    if ($found !== false) {
-                        $matchWithResult->statusId = $matchPredictionResults[$found]->value;
-                        break;
+                if ($matchPredictionResults) {
+                    foreach ($this->predictions as $prediction) {
+                        $found = array_search($prediction, array_column($matchPredictionResults, 'predictionName'));
+                        if ($found !== false) {
+                            $matchWithResult->statusId = $matchPredictionResults[$found]->value;
+                            break;
+                        }
                     }
                 }
-                if ($schedule["statusId"] != $matchWithResult->statusId) {
+                if ($schedule["statusId"] != $matchWithResult->statusId && $matchWithResult->statusId != 4) {
                     $odd = \App\Models\Events\Odd::where('id', $schedule['odd_id'])->first();
 
                     $invalidMatches = json_decode($schedule["invalid_matches"]);

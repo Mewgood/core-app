@@ -49,7 +49,7 @@ class Association extends Controller
                 $count++;
             }
 
-            $odd = Odd::where("matchId", "=", $association->event->matchId)
+            $odd = Odd::where("matchId", "=", $association->event ? $association->event->matchId : 0)
                 ->where("leagueId", "=", $association->leagueId)
                 ->where("predictionId", "=", $association->predictionId)
                 ->first();

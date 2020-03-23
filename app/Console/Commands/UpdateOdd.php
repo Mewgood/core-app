@@ -39,7 +39,7 @@ class UpdateOdd extends CronCommand
 
                     if ($predictionId) {
                         foreach ($match->odds as $odd) {
-                            if ($odd->predictionId == $predictionId) {
+                            if ($odd->predictionId == $predictionId && !$odd->manually_updated) {
                                 // TO DO: check for AU interval and replace match if is not good for it
                                 $odd->odd = $this->roundOdds($feedOdd["value"]);
                                 $odd->update();

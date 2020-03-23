@@ -49,7 +49,7 @@ class Association extends Controller
                 $count++;
             }
 
-            $odd = Odd::where("matchId", "=", $association->event->matchId)
+            $odd = Odd::where("matchId", "=", $association->event ? $association->event->matchId : 0)
                 ->where("leagueId", "=", $association->leagueId)
                 ->where("predictionId", "=", $association->predictionId)
                 ->first();
@@ -485,6 +485,44 @@ class Association extends Controller
         ]);
     }
 
+    public function updatePredictionRUOdd(Request $request)
+    {
+        $association = AssociationModel::findOrFail($request->associationId);
+        $association->odd = $request->odd;
+        $association->update();
+
+        $odd = Odd::where("matchId", "=", $association->event->match->id)
+            ->where("predictionId", "=", $association->predictionId)
+            ->first();
+
+        $odd->manually_updated = true;
+        $odd->update();
+
+        $distributions = \App\Distribution::where("associationId", "=", $association->id)->groupBy("associationId", "siteId")->get();
+        foreach ($distributions as $distribution) {
+            if (!$distribution->isPublish) {
+                $distribution->updateDistribution($association);
+            }
+        }
+
+        $otherAssociations = AssociationModel::where("eventId", "=", $association->eventId)
+            ->where("predictionId", "=", $association->predictionId)
+            ->get();
+
+        foreach ($otherAssociations as $otherAssociation) {
+            $otherAssociation->odd = $association->odd;
+            $otherAssociation->update();
+        
+            $distributions = \App\Distribution::where("associationId", "=", $otherAssociation->id)->groupBy("associationId", "siteId")->get();
+            foreach ($distributions as $distribution) {
+                if (!$distribution->isPublish) {
+                    $distribution->updateDistribution($otherAssociation);
+                }
+            }
+        }
+        return response($association);
+    }
+
     public function updatePrediction(Request $request)
     {
         $association = AssociationModel::findOrFail($request->associationId);
@@ -531,6 +569,23 @@ class Association extends Controller
                 }
             }
         }
+
+        $otherAssociations = AssociationModel::where("eventId", "=", $association->eventId)
+            ->where("predictionId", "=", $association->predictionId)
+            ->get();
+
+        foreach ($otherAssociations as $otherAssociation) {
+            $otherAssociation->odd = $association->odd;
+            $otherAssociation->update();
+        
+            $distributions = \App\Distribution::where("associationId", "=", $otherAssociation->id)->groupBy("associationId", "siteId")->get();
+            foreach ($distributions as $distribution) {
+                if (!$distribution->isPublish) {
+                    $distribution->updateDistribution($otherAssociation);
+                }
+            }
+        }
+
         return response($response);
     }
 

@@ -16,7 +16,7 @@ class AssociationModel extends Model
 
     public function event()
     {
-        return $this->hasOne(Event::class, "eventId");
+        return $this->belongsTo(Event::class, "eventId");
     }
 
     public static function validate($item, $systemDate) {

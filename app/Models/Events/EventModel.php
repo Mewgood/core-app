@@ -2,15 +2,19 @@
 
 namespace App\Models\Events;
 
-use Illuminate\Database\Eloquent\Model;
-
 use App\Match;
+
+use Carbon\Carbon;
 use App\Association;
 use App\Distribution;
+use App\SubscriptionTipHistory;
+use Illuminate\Database\Eloquent\Model;
 use App\Console\Commands\AutoUnitAddEvents;
 
 class EventModel extends Model
 {
+    protected $table = "event";
+
     public static function bulkInsert($data)
     {
         $addedEvents = [];
@@ -238,19 +242,44 @@ class EventModel extends Model
                 "statusId" => 4
             ]);
 
+        $subscriptionHistories = SubscriptionTipHistory::with("subscription")->where("eventId", "=", $eventId)->get();
+
+        foreach ($subscriptionHistories as $subscriptionHistory) {
+            if ($subscriptionHistory->subscription->type == "days") {
+                $endDate = new Carbon($subscriptionHistory->subscription->dateEnd);
+                $subscriptionHistory->subscription->dateEnd = $endDate->addDay()->format("Y-m-d");
+                $subscriptionHistory->subscription->status = "active";
+                $subscriptionHistory->subscription->update();
+            } else {
+                $subscriptionHistory->subscription->tipsLeft += 1;
+                $subscriptionHistory->subscription->tipsBlocked -= 1;
+                $subscriptionHistory->subscription->status = "active";
+                $subscriptionHistory->subscription->update();
+            }
+        }
+
         $match = Match::find($event->matchId);
 
         if ($match) {
             $match->is_postponed = 1;
             $match->update();
-    
+            $match->statusId = 4;
+
             $autoUnitCron = new AutoUnitAddEvents();
-            $autoUnitCron->fire($match, true, null, true);  
+            $autoUnitCron->fire($match, false, null, false);  
         }
 
         return [
             'type' => 'success',
             'message' => 'Match was postponed'
         ];
+    }
+
+    public static function getNoUserEventsWithResults($date)
+    {
+        $data = self::where("eventDate", "LIKE", "%" .  $date . "%")
+            ->where("result", "!=", "")
+            ->get();
+        return $data;
     }
 }

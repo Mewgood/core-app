@@ -39,9 +39,9 @@ class UpdateOdd extends CronCommand
 
                     if ($predictionId) {
                         foreach ($match->odds as $odd) {
-                            if ($odd->predictionId == $predictionId) {
+                            if ($odd->predictionId == $predictionId && !$odd->manually_updated) {
                                 // TO DO: check for AU interval and replace match if is not good for it
-                                $odd->odd = $feedOdd["value"];
+                                $odd->odd = $this->roundOdds($feedOdd["value"]);
                                 $odd->update();
 
                                 if ($match->events) {
@@ -51,20 +51,23 @@ class UpdateOdd extends CronCommand
                                             "odd" => $odd->odd
                                         ]);
                                     foreach ($match->events as $event) {
-                                        if ($event->distributions) {
-                                            $event->distributions()
-                                                ->where("predictionId", "=", $predictionId)
-                                                ->update([
-                                                    "odd" => $odd->odd
-                                                ]);
-                                        }
-    
-                                        if ($event->associations) {
-                                            $event->associations()
-                                                ->where("predictionId", "=", $predictionId)
-                                                ->update([
-                                                    "odd" => $odd->odd
-                                                ]);
+                                        $sentEmail = $event->distributions()->where("isEmailSend", "=", 1)->exists();
+                                        if (!$sentEmail) {
+                                            if ($event->distributions) {
+                                                $event->distributions()
+                                                    ->where("predictionId", "=", $predictionId)
+                                                    ->update([
+                                                        "odd" => $odd->odd
+                                                    ]);
+                                            }
+        
+                                            if ($event->associations) {
+                                                $event->associations()
+                                                    ->where("predictionId", "=", $predictionId)
+                                                    ->update([
+                                                        "odd" => $odd->odd
+                                                    ]);
+                                            }
                                         }
                                     }
                                 }
@@ -113,5 +116,24 @@ class UpdateOdd extends CronCommand
            return false;
         }
         return $predictionId;
+    }
+
+    private function roundOdds($odd) {
+        $stringOdd = (string)$odd;
+        $firstDecimal = (int)substr($stringOdd, 2, strlen($stringOdd) - 1);
+        $lastDecimal = (int)substr($stringOdd, 3, strlen($stringOdd));
+        
+        if ($lastDecimal == 0) {
+            return (float)$stringOdd;
+        } elseif ($lastDecimal < 3) {
+            $lastDecimal = 0;
+        } elseif ($lastDecimal >= 3 && $lastDecimal < 8) {
+            $lastDecimal = 5;
+        } elseif ($lastDecimal >= 8) {
+            $firstDecimal = 1 + (int)$firstDecimal;
+            $lastDecimal = $firstDecimal . "0";
+        }
+        $stringOdd = substr_replace($stringOdd, $lastDecimal, strlen($stringOdd) - strlen($lastDecimal), strlen($stringOdd));
+        return (float)$stringOdd;
     }
 }

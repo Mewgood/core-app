@@ -1,5 +1,6 @@
 <?php namespace App;
 
+use App\Subscription;
 use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionTipHistory extends Model {
@@ -35,4 +36,9 @@ class SubscriptionTipHistory extends Model {
         'systemDate',
         'mailingDate',
     ];
+    
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class, "subscriptionId");
+    }
 }

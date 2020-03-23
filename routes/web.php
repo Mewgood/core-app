@@ -1229,6 +1229,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
 
     // return events based on selection: table, provider, league, minOdd, maxOdd
     $app->get('/event/available', 'Admin\Event@getAvailableEvents');
+    $app->post('/event/no-user', 'Admin\Event@getNoUserEvents');
 
     // add event from match
     // @param integer $matchId
@@ -1330,6 +1331,7 @@ $app->group(['prefix' => 'admin', 'middleware' => 'auth'], function ($app) {
     // @return array()
     $app->post("/association/no-tip", 'Admin\Association@addNoTip');
     $app->post("/association/update-prediction", "Admin\Association@updatePrediction");
+    $app->post("/association/update-prediction-odd", "Admin\Association@updatePredictionRUOdd");
     $app->post("/association/update-published-prediction", "Admin\Association@updatePublishedPredictions");
     $app->get("/association/detail/{id}", "Admin\Association@displayAssociationDetail");
 

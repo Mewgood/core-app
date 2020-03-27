@@ -138,7 +138,7 @@ class Association extends Controller
                 ->where('predictionIdentifier', $data['event']->predictionId)
                 ->count();
 
-            if (! $packageAcceptPrediction) {
+            if (! $packageAcceptPrediction && !$data['event']->isNoTip) {
                 $ineligiblePackageIds[] = $packagesIds[$k];
                 unset($packagesIds[$k]);
             }
@@ -173,7 +173,7 @@ class Association extends Controller
                 ->where('systemDate', $date)
                 ->count();
             $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
-            
+
             if ($section == "nu") {
                 $autounit = MonthlySetting::where("siteId", "=", $p->siteId)
                     ->where("tipIdentifier", "=", $p->tipIdentifier)
@@ -183,10 +183,13 @@ class Association extends Controller
 
                 if (
                     $autounit &&
-                    (float)$data['event']->odd >= (float)$autounit->minOdd && 
-                    (float)$data['event']->odd <= (float)$autounit->maxOdd
+                    (
+                        (
+                            (float)$data['event']->odd >= (float)$autounit->minOdd && 
+                            (float)$data['event']->odd <= (float)$autounit->maxOdd
+                        ) || $data['event']->isNoTip
+                    )
                 ) {
-
                     if ($tipsDifference >= 0) {
                         $this->mapAssociationModalData($data, 3, $site, $p, $tipsDifference, $distributionExists, $eventsExistsOnSystemDate, true);
                     } else {
@@ -265,29 +268,31 @@ class Association extends Controller
             ->groupBy("package.id")
             ->get();
 
-        foreach ($ineligiblePackages as $p) {            
-            // check if event alredy exists in tips distribution
-            $distributionExists = \App\Distribution::where('associationId', $association['event']->id)
-                ->where('packageId', $p->id)
-                ->count();
-
-            // get number of associated events with package on event systemDate
-            $eventsExistsOnSystemDate = \App\Distribution::where('packageId', $p->id)
-                ->where('systemDate', $date)
-                ->count();
-
-            $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
-            $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $p->siteName;
-            $data['sites'][0][$p->siteName]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $event->to_distribute;
-            $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["eligible"] = false;
-            $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
-            $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
-                'id' => $p->id,
-                'name' => $p->name,
-                'tipsPerDay' => $p->tipsPerDay,
-                'eventIsAssociated' => $distributionExists,
-                'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
-            ];
+        foreach ($ineligiblePackages as $p) {
+            if (!$association['event']->isNoTip) {
+                // check if event alredy exists in tips distribution
+                $distributionExists = \App\Distribution::where('associationId', $association['event']->id)
+                    ->where('packageId', $p->id)
+                    ->count();
+    
+                // get number of associated events with package on event systemDate
+                $eventsExistsOnSystemDate = \App\Distribution::where('packageId', $p->id)
+                    ->where('systemDate', $date)
+                    ->count();
+    
+                $tipsDifference = $eventsExistsOnSystemDate - $p->tipsPerDay;
+                $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["siteName"] = $p->siteName;
+                $data['sites'][0][$p->siteName]['tipIdentifier'][$p->tipIdentifier]["toDistribute"] = $event->to_distribute;
+                $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["eligible"] = false;
+                $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]["tipsDifference"] = $tipsDifference;
+                $data[$p->siteName]['tipIdentifier'][$p->tipIdentifier]['packages'][] = [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'tipsPerDay' => $p->tipsPerDay,
+                    'eventIsAssociated' => $distributionExists,
+                    'packageAssociatedEventsNumber' => $eventsExistsOnSystemDate
+                ];
+            }
         }
         return $data;
     }

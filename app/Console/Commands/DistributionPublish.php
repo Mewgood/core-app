@@ -40,7 +40,6 @@ class DistributionPublish extends CronCommand
         $this->currentDate = date("Y-m-d", time());
 
         $events = $this->loadData();
-
         if (!$events) {
             //$this->stopCron($cron, []);
             return true;
@@ -97,7 +96,7 @@ class DistributionPublish extends CronCommand
                         continue;
                     }
 
-                    if (!$event->isPublish && ($event->result || $event->statusId == 4) && $event->status && $this->timestamp >= $event->publishTime) {
+                    if (!$event->isPublish && ($event->result || $event->statusId == 4 || $event->isNoTip) && ($event->status || $event->isNoTip) && $this->timestamp >= $event->publishTime) {
                         if (!$this->publish($site, $event)) {
                             $dataInfo['errors'][] = "Couldn't publish eventId {$event->id} to siteId {$site->id}";
                             $this->log->log(100, json_encode([
@@ -638,7 +637,8 @@ class DistributionPublish extends CronCommand
             (
                 !$data[$value->siteId][$value->systemDate]['hasPendingEvents'] &&
                 (!$value->result || !$value->statusId) &&
-                $value->statusId != 4
+                $value->statusId != 4 &&
+                $value->isNoTip != 1
             ) {
                 $data[$value->siteId][$value->systemDate]['hasPendingEvents'] = true;
                 $this->log->log(100, json_encode([
@@ -678,7 +678,7 @@ class DistributionPublish extends CronCommand
             }
 
             if ((int) $value->statusId === 1 || $value->statusId == 4) {
-                if ($value->statusId != 4 || $allMatchesPostponed) {
+                if ($value->statusId != 4 || $allMatchesPostponed || $value->isNoTip) {
                     $data[$value->siteId][$value->systemDate]['tmp']['good']++;
                 }
 
@@ -696,10 +696,11 @@ class DistributionPublish extends CronCommand
                     "step"              => 4
                 ]));
             }
-            if ($value->statusId != 4 || $allMatchesPostponed) {
+            if ($value->statusId != 4 || $allMatchesPostponed || $value->isNoTip) {
                 $data[$value->siteId][$value->systemDate]['tmp']['all']++;
             }
             $value->publishTime = $data[$value->siteId][$value->systemDate]['publishTime'];
+            $value->update();
             $data[$value->siteId][$value->systemDate]['events'][] = $value;
         }
 

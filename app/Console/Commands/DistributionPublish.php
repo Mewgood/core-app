@@ -677,7 +677,7 @@ class DistributionPublish extends CronCommand
                 ]));
             }
 
-            if ((int) $value->statusId === 1 || $value->statusId == 4) {
+            if ((int) $value->statusId === 1 || $value->statusId == 4 || $value->isNoTip) {
                 if ($value->statusId != 4 || $allMatchesPostponed || $value->isNoTip) {
                     $data[$value->siteId][$value->systemDate]['tmp']['good']++;
                 }

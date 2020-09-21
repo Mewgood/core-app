@@ -41,7 +41,7 @@ class SetStatusByScore
 
         // to score
         if ($this->predictionIdentifier == 'noGoal')
-            $this->status = ($this->homeTeam < 1 && $this->awayTeam < 1) ? 1 : 2;
+            $this->status = ($this->homeTeam == 0 || $this->awayTeam == 0) ? 1 : 2;
 
         if ($this->predictionIdentifier == 'bothToScore')
             $this->status = ($this->homeTeam >  0 && $this->awayTeam > 0) ? 1 : 2;
